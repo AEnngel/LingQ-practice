@@ -1094,7 +1094,7 @@ function speakSentence(rate) {
 }
 
 var currentQuizCorrectIndex = 0;
-  var currentQuizAttempts = 0;
+var currentQuizAttempts = 0;
 var quizLangIdx = 29;      // 퀴즈에 선택된 언어(DATA 인덱스)
 var quizSentIdx = 0;       // 현재 퀴즈 문제의 문장 번호
 var quizCorrect = null;    // 현재 퀴즈 문제의 문장 객체
@@ -1113,7 +1113,7 @@ function newQuiz() {
   if (!lang) return;
   var qIdx = Math.floor(Math.random() * lang.sents.length);
   var correct = lang.sents[qIdx];
-
+currentQuizAttempts = 0;
   var pool = [];
   for (var i = 0; i < lang.sents.length; i++) {
     if (i !== qIdx) pool.push(lang.sents[i]);
@@ -1150,10 +1150,39 @@ function newQuiz() {
 
 function checkQuiz(btn, isCorrect) {
   var opts = document.querySelectorAll('.quiz-opt');
-  for (var i = 0; i < opts.length; i++) {
-    opts[i].disabled = true;
+
+  if (isCorrect) {
+    for (var i = 0; i < opts.length; i++) {
+      opts[i].disabled = true;
+    }
+    btn.classList.add('correct');
+
+    setTimeout(function() {
+      newQuiz();
+    }, 1000);
+    return;
   }
-  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+
+  currentQuizAttempts++;
+  btn.classList.add('wrong');
+  btn.disabled = true;
+
+  if (currentQuizAttempts === 1) {
+    return;
+  }
+
+  for (var j = 0; j < opts.length; j++) {
+    opts[j].disabled = true;
+  }
+
+  var answer = document.createElement('div');
+  answer.className = 'quiz-answer';
+  answer.textContent = '정답: ' + quizCorrect.k;
+  document.getElementById('quiz-body').appendChild(answer);
+
+  setTimeout(function() {
+    newQuiz();
+  }, 1500);
 }
 
 function setCmpSent(i) {
