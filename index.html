@@ -299,7 +299,7 @@ var hideState = { pron: false, ko: false, tbl: false };
 var STARS = {};
 var LANGNAMES = {};
 var seq = { active: false, idx: 0, token: 0, watch: null };
-var quizState = { lang: '', type: 'clue', correct: null, sent: null, answered: false, right: 0, total: 0, timer: null, clozeWord: null };
+var quizState = { lang: '', type: 'clue', correct: null, sent: null, answered: false, attempts: 0, right: 0, total: 0, timer: null, clozeWord: null };
 
 /* ---------- 저장소 ---------- */
 function lsGet(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
@@ -894,6 +894,7 @@ function newQuiz() {
   quizState.lang = lang.code;
   quizState.type = type;
   quizState.answered = false;
+  quizState.attempts = 0;
   var body = document.getElementById('quiz-body');
 
   var qi = rnd(lang.sents.length);
@@ -987,31 +988,58 @@ function quizSpeak(mult) {
 }
 function checkQuiz(btn, isCorrect) {
   if (quizState.answered) return;
-  quizState.answered = true;
   var opts = document.querySelectorAll('#quiz-body .quiz-opt');
-  for (var i = 0; i < opts.length; i++) {
-    opts[i].disabled = true;
-    if (opts[i] !== btn) {
-      // 정답 버튼 표시
-      var oc = opts[i].getAttribute('onclick') || '';
-      if (oc.indexOf('true') !== -1) opts[i].classList.add('correct');
-    }
-  }
-  btn.classList.add(isCorrect ? 'correct' : 'wrong');
-  quizState.total++;
-  if (isCorrect) quizState.right++;
   var fb = document.getElementById('q-feedback');
+
+  if (isCorrect) {
+    // 정답: 모든 보기 잠그고 정답 표시 → 잠시 뒤 다음 문제
+    quizState.answered = true;
+    for (var i = 0; i < opts.length; i++) {
+      opts[i].disabled = true;
+      var oc = opts[i].getAttribute('onclick') || '';
+      if (opts[i] !== btn && oc.indexOf('true') !== -1) opts[i].classList.add('correct');
+    }
+    btn.classList.add('correct');
+    quizState.total++;
+    if (quizState.attempts === 0) quizState.right++;
+    if (fb) {
+      fb.className = 'q-feedback ok';
+      fb.textContent = '정답입니다! ' + (quizState.type === 'cloze' && quizState.clozeWord ? ('‘' + quizState.correct + '’ — ' + quizState.clozeWord[2]) : '');
+    }
+    updateQuizScore();
+    quizState.timer = setTimeout(function () {
+      quizState.timer = null;
+      if (document.getElementById('mode-quiz').classList.contains('hidden')) return;
+      newQuiz();
+    }, 900);
+    return;
+  }
+
+  // 오답: 첫 번째는 다시 고를 수 있게, 두 번째 오답에서 정답 공개 후 넘어간다 (v11에서 엔젤 님이 만든 방식 유지)
+  quizState.attempts++;
+  btn.classList.add('wrong');
+  btn.disabled = true;
+  if (quizState.attempts === 1) {
+    if (fb) { fb.className = 'q-feedback'; fb.textContent = '다시 한 번 골라 보세요.'; }
+    return;
+  }
+  quizState.answered = true;
+  for (var j = 0; j < opts.length; j++) {
+    opts[j].disabled = true;
+    var oc2 = opts[j].getAttribute('onclick') || '';
+    if (oc2.indexOf('true') !== -1) opts[j].classList.add('correct');
+  }
+  quizState.total++;
   if (fb) {
-    fb.className = 'q-feedback ' + (isCorrect ? 'ok' : 'no');
-    fb.textContent = isCorrect ? '정답입니다! ' + (quizState.type === 'cloze' ? ('‘' + quizState.correct + '’ — ' + (quizState.clozeWord ? quizState.clozeWord[2] : '')) : '')
-      : '아쉬워요. 정답: ' + quizState.correct + (quizState.type === 'cloze' && quizState.clozeWord ? (' (' + quizState.clozeWord[2] + ')') : '');
+    fb.className = 'q-feedback no';
+    fb.textContent = '아쉬워요. 정답: ' + quizState.correct + (quizState.type === 'cloze' && quizState.clozeWord ? (' (' + quizState.clozeWord[2] + ')') : '');
   }
   updateQuizScore();
   quizState.timer = setTimeout(function () {
     quizState.timer = null;
     if (document.getElementById('mode-quiz').classList.contains('hidden')) return;
     newQuiz();
-  }, 900);
+  }, 1500);
 }
 function updateQuizScore() {
   document.getElementById('quiz-score').textContent = quizState.total ? ('정답 ' + quizState.right + ' / ' + quizState.total) : '';
