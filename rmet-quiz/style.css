@@ -293,6 +293,11 @@ main { padding: 16px 16px 24px; max-width: 720px; margin: 0 auto; }
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+.footernote {
+  font-size: 11.5px; color: var(--ink3); text-align: center; line-height: 1.6;
+  margin: 18px 8px 4px;
+}
+
 @media (max-width: 360px) {
   .qprompt { font-size: 23px; }
   .wcard .wtitle { font-size: 23px; }
