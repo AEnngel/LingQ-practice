@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>눈으로 감정 읽기 · RMET 78단어 7개 언어 테스트</title>
+<meta name="description" content="RMET 36문항의 감정 단어 78개를 영어·라틴어·이탈리아어·포르투갈어·프랑스어·스페인어·독일어로 푸는 4지선다 퀴즈와 7개 언어 비교 카드.">
+<meta name="theme-color" content="#1b2a4a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">🧠</span>
+    <div>
+      <h1>눈으로 감정 읽기</h1>
+      <p>RMET 78개 감정 단어 · 7개 언어</p>
+    </div>
+  </div>
+  <div class="topactions">
+    <button class="ghost" id="btnStarTop" title="별표 복습함">⭐ <span id="starCount">0</span></button>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============================ 퀴즈 ============================ -->
+  <section class="screen" id="screen-quiz">
+
+    <div id="quizSetup">
+      <div class="card">
+        <h2>언어</h2>
+        <p class="desc">7개 언어 중 하나를 고르거나, 문제마다 언어가 바뀌는 랜덤 모드를 쓰세요.</p>
+        <div class="chips" id="langChips"></div>
+      </div>
+
+      <div class="card">
+        <h2>문제 유형</h2>
+        <div class="chips" id="modeChips">
+          <button class="chip" data-mode="fk">외국어 → 한국어 뜻</button>
+          <button class="chip" data-mode="kf">한국어 뜻 → 외국어</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>범위</h2>
+        <div class="chips" id="scopeChips">
+          <button class="chip" data-scope="all">전체 78</button>
+          <button class="chip" data-scope="b1">1~20</button>
+          <button class="chip" data-scope="b2">21~40</button>
+          <button class="chip" data-scope="b3">41~60</button>
+          <button class="chip" data-scope="b4">61~78</button>
+          <button class="chip" data-scope="star">⭐ 별표만</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>퀴즈 설정</h2>
+        <label class="switchrow">
+          <span>문제가 나오면 음성 자동 재생</span>
+          <input type="checkbox" id="optAutoSpeak">
+          <span class="switch" aria-hidden="true"></span>
+        </label>
+        <label class="switchrow">
+          <span>정답 확인 후 자동으로 다음 문제</span>
+          <input type="checkbox" id="optAutoNext">
+          <span class="switch" aria-hidden="true"></span>
+        </label>
+        <div class="row" style="margin-top:12px">
+          <button class="btn" id="btnStartQuiz">퀴즈 시작</button>
+        </div>
+        <div class="hint" id="quizHint"></div>
+      </div>
+
+      <div class="card soft">
+        <h2>음성</h2>
+        <p class="desc" id="voiceSummary">음성 목록을 확인하는 중…</p>
+        <div class="row"><button class="ghost" id="btnVoiceDiag">🔎 음성 진단</button></div>
+      </div>
+    </div>
+
+    <div id="quizPlay" class="hidden">
+      <div class="quizbar">
+        <div class="qstats">
+          <span><b id="qIndex">1</b> / <span id="qTotal">20</span></span>
+          <span class="sep">·</span>
+          <span>정답 <b id="qScore">0</b></span>
+          <span class="sep">·</span>
+          <span class="wrong">오답 <b id="qWrong">0</b></span>
+        </div>
+        <button class="ghost small" id="btnQuitQuiz">그만하기</button>
+      </div>
+      <div class="progressbar"><i id="qProgress"></i></div>
+
+      <div class="card qcard">
+        <div class="qmeta"><span class="langbadge" id="qLang"></span><span class="qtype" id="qTypeLabel"></span></div>
+        <div class="qprompt" id="qPrompt"></div>
+        <div class="qprompt-sub" id="qPromptSub"></div>
+        <div class="row qaudio" id="qAudioRow">
+          <button class="ghost" id="btnRepeat">🔊 다시 듣기</button>
+          <button class="ghost" id="btnSlow">🐢 느리게</button>
+        </div>
+      </div>
+
+      <div class="options" id="qOptions"></div>
+
+      <div class="card answer hidden" id="qAnswer">
+        <div class="ansline" id="ansResult"></div>
+        <div class="answord" id="ansWord"></div>
+        <div class="anspron" id="ansPron"></div>
+        <div class="ansnoun" id="ansNoun"></div>
+        <div class="ansktx" id="ansKtx"></div>
+        <div class="row" style="margin-top:10px">
+          <button class="ghost" id="btnAnsSpeak">🔊 단어</button>
+          <button class="ghost" id="btnAnsSlow">🐢 느리게</button>
+          <button class="ghost" id="btnAnsNounSpeak">🔊 명사</button>
+          <button class="ghost" id="btnAnsStar">☆ 별표 담기</button>
+        </div>
+      </div>
+
+      <div class="row qnav">
+        <button class="btn" id="btnNextQ" disabled>다음 문제</button>
+      </div>
+    </div>
+
+    <div id="quizDone" class="hidden">
+      <div class="card hero">
+        <h2 id="doneTitle">퀴즈 완료</h2>
+        <p class="desc" id="doneDesc"></p>
+        <div class="statrow">
+          <div><b id="doneScore">0</b>정답</div>
+          <div><b id="doneWrong">0</b>오답</div>
+          <div><b id="doneRate">0%</b>정답률</div>
+        </div>
+      </div>
+      <div class="card" id="doneWrongCard">
+        <h2>틀린 단어</h2>
+        <div id="doneWrongList"></div>
+      </div>
+      <div class="row" style="gap:8px;display:flex;flex-wrap:wrap">
+        <button class="btn" id="btnRetryWrong">틀린 단어만 다시</button>
+        <button class="btn secondary" id="btnRetrySame">같은 범위 다시</button>
+        <button class="btn ghostbtn" id="btnBackSetup">설정으로</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================== 단어 카드 ========================== -->
+  <section class="screen hidden" id="screen-cards">
+    <div class="card">
+      <div class="row between">
+        <input type="search" id="cardSearch" class="search" placeholder="단어·뜻 검색 (영어, 한국어, 모든 언어)">
+      </div>
+      <div class="chips" id="cardFilter" style="margin-top:10px">
+        <button class="chip" data-filter="all">전체 78</button>
+        <button class="chip" data-filter="star">⭐ 별표만</button>
+      </div>
+    </div>
+
+    <div class="card playbar">
+      <div class="playrow">
+        <select id="playLang" class="select"></select>
+        <button class="btn smallbtn" id="btnPlayAll">▶️ 전체 이어 듣기</button>
+        <button class="btn smallbtn secondary" id="btnPlayStar">⭐ 별표만 이어 듣기</button>
+        <button class="btn smallbtn ghostbtn hidden" id="btnStopPlay">⏹ 정지</button>
+      </div>
+      <div class="chips speeds" id="speedChips">
+        <button class="chip" data-speed="0.7">0.7x</button>
+        <button class="chip" data-speed="1">1.0x</button>
+        <button class="chip" data-speed="1.2">1.2x</button>
+        <button class="chip" data-speed="1.5">1.5x</button>
+        <button class="chip" data-speed="2">2.0x</button>
+      </div>
+    </div>
+
+    <div class="cardnav">
+      <button class="navbtn" id="btnPrevCard" aria-label="이전 단어">‹</button>
+      <div class="cardindex" id="cardIndex">1 / 78</div>
+      <button class="navbtn" id="btnNextCard" aria-label="다음 단어">›</button>
+    </div>
+
+    <div id="cardBody"></div>
+
+    <div class="cardnavbottom">
+      <button class="ghost" id="btnCardStar">⭐ 별표</button>
+      <button class="ghost" id="btnCardSpeakAll">🔊 이 단어 7개 언어</button>
+    </div>
+  </section>
+
+</main>
+
+<nav class="tabbar">
+  <button class="tab on" data-tab="quiz"><span>📝</span>퀴즈</button>
+  <button class="tab" data-tab="cards"><span>🃏</span>단어 카드</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
