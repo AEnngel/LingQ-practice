@@ -789,8 +789,13 @@ async function renderStudyView(sIdx, s) {
   if (s.part == null || s.part < 0 || s.part >= parts.length) s.part = 0;
   const p = parts[s.part];
   const says = [];
-  const body = p.blocks.map(b => {
-    if (b.t !== 'ex') return studyBlockHtml(b);
+  const toc = [];
+  const body = p.blocks.map((b, bi) => {
+    if (b.t === 'h' && b.l === 2) toc.push({ id: 'sec' + bi, x: plainText(b.x) });
+    if (b.t !== 'ex') {
+      const h = studyBlockHtml(b);
+      return (b.t === 'h' && b.l === 2) ? h.replace(/^<h2/, '<h2 id="sec' + bi + '"') : h;
+    }
     const n = says.length;
     says.push({ t: plainText(b.x), c: code, n });
     return `<div class="sex">
@@ -815,6 +820,10 @@ async function renderStudyView(sIdx, s) {
         <label>파트</label>
         <select id="stPart">${parts.map((x, i) => `<option value="${i}" ${i === s.part ? 'selected' : ''}>${esc(x.part)} ${esc(x.title)}</option>`).join('')}</select>
       </div>
+      ${toc.length > 2 ? `<div class="field">
+        <label>이 파트 목차</label>
+        <select id="stJump"><option value="">— 이동할 곳 —</option>${toc.map(t => `<option value="${t.id}">${esc(t.x)}</option>`).join('')}</select>
+      </div>` : ''}
       <div class="row">
         <button class="btn plain sm" data-prev="1" ${s.part === 0 ? 'disabled' : ''}>← 이전</button>
         <button class="btn plain sm" data-next="1" ${s.part >= parts.length - 1 ? 'disabled' : ''}>다음 →</button>
@@ -837,6 +846,13 @@ async function renderStudyView(sIdx, s) {
   </div>`;
 
   fillVoiceLine($('#stVoice'), code, name);
+  const jump = $('#stJump');
+  if (jump) jump.onchange = e => {
+    const el = document.getElementById(e.target.value);
+    if (!el) return;
+    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 110, behavior: 'smooth' });
+    e.target.value = '';
+  };
   $('#stGuide').onchange = e => { s.guide = e.target.value; s.part = 0; renderGrammarSetup(); };
   $('#stPart').onchange = e => { s.part = Number(e.target.value); renderGrammarSetup(); };
   $$('[data-prev]', app).forEach(b => b.onclick = () => { if (s.part > 0) { s.part -= 1; renderGrammarSetup(); } });
