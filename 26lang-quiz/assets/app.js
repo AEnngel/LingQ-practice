@@ -50,7 +50,13 @@ const RATES = [0.5, 1, 1.5, 2];
 let toastTimer = null;
 function toast(msg, ms) {
   let el = document.getElementById('toast');
-  if (!el) { el = document.createElement('div'); el.id = 'toast'; document.body.appendChild(el); }
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    document.body.appendChild(el);
+  }
   el.textContent = msg;
   el.classList.add('on');
   clearTimeout(toastTimer);
