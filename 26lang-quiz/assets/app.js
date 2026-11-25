@@ -324,6 +324,10 @@ const DATA = {
   verbLang: (v, n) => load(`data/grammar/verbs/v${v}_l${String(n).padStart(2, '0')}.json`),
   lingqIndex: () => load('data/grammar/lingq/index.json'),
   lingq: k => load(`data/grammar/lingq/${k}.json`),
+  studyIndex: () => load('data/grammar/study/index.json'),
+  study: k => load(`data/grammar/study/${k}.json`),
+  gamesIndex: () => load('data/grammar/games/index.json'),
+  games: n => load(`data/grammar/games/${String(n).padStart(2, '0')}.json`),
   library: () => load('data/library.json')
 };
 
@@ -394,6 +398,7 @@ function renderQuiz() {
   if (q.idx >= q.items.length) return renderResult();
   const it = q.items[q.idx];
   if (it.kind === 'card') return renderCard();
+  if (it.kind === 'order') return renderOrder();
   const pct = Math.round((q.idx / q.items.length) * 100);
 
   let opts = '';
@@ -497,6 +502,11 @@ function payloadOf(it) {
       answer: it.back.html, opts: [], correct: -1, why: '', extra: '', sub: '',
       sayF: (it.front && it.front.say) || null, sayB: (it.back && it.back.say) || null };
   }
+  if (it.kind === 'order') {
+    return { key: it.key, kind: 'order', title: it.title || '', prompt: it.prompt, sub: it.sub || '',
+      answer: it.answer, tiles: it.tiles || [], pron: it.pron || '', opts: [], correct: -1,
+      why: it.why || '', extra: '', sayA: it.say || null };
+  }
   return {
     key: it.key || (it.prompt + '|' + (it.answer || '')).slice(0, 120),
     kind: it.kind, prompt: it.prompt, sub: it.sub || '', opts: it.opts || [],
@@ -509,6 +519,10 @@ function itemFromPayload(p) {
   if (p.kind === 'card') {
     return { kind: 'card', title: p.title, key: p.key,
       front: { html: p.prompt, note: '', say: p.sayF || null }, back: { html: p.answer, say: p.sayB || null } };
+  }
+  if (p.kind === 'order') {
+    return { kind: 'order', title: p.title, key: p.key, prompt: p.prompt, sub: p.sub,
+      answer: p.answer, tiles: p.tiles || [], pron: p.pron || '', why: p.why || '', say: p.sayA || null };
   }
   return { kind: p.kind === 'self' ? 'self' : 'mc', prompt: p.prompt, sub: p.sub, opts: p.opts,
     correct: p.correct, answer: p.answer, why: p.why, extra: p.extra, key: p.key, title: p.title,
@@ -618,6 +632,78 @@ function renderCard() {
   qt.onclick = () => { if (confirm('그만둘까요?')) { state.quiz = null; go(state.tab); } };
 }
 
+/* ---------------------------------------------------------------- 어순 배열 */
+function renderOrder() {
+  const q = state.quiz, it = q.items[q.idx];
+  if (!q.ord || q.ord.i !== q.idx) q.ord = { i: q.idx, picked: [], done: false, ok: false };
+  const o = q.ord;
+  const pct = Math.round((q.idx / q.items.length) * 100);
+  const norm = t => String(t || '').replace(/\s+/g, ' ').trim();
+  const built = o.picked.map(i => it.tiles[i]).join(' ');
+  const ok = norm(built) === norm(it.answer);
+  const pickedHtml = o.picked.length
+    ? o.picked.map((ti, pos) => `<button class="tile on" data-unpick="${pos}">${esc(it.tiles[ti])}</button>`).join('')
+    : `<span class="tile-ghost">단어를 차례로 눌러 보세요</span>`;
+  const pool = it.tiles.map((t, i) => ({ t, i })).filter(x => !o.picked.includes(x.i));
+
+  app.innerHTML = `<div class="screen">
+    <div class="qhead">
+      <span class="badge">${esc(q.title)}</span>
+      <span class="pct mono">${q.idx + 1} / ${q.items.length} · 정답 ${q.answers.filter(Boolean).length}</span>
+    </div>
+    <div class="progress"><i style="width:${pct}%"></i></div>
+    ${rateBarHtml()}
+    <div class="card">
+      ${it.prompt}
+      ${it.sub ? `<div class="qsub">${it.sub}</div>` : ''}
+      <div class="orderbuilt ${o.done ? (o.ok ? 'ok' : 'no') : ''}">${pickedHtml}</div>
+      <div class="tiles">${pool.map(x => `<button class="tile" data-tile="${x.i}">${esc(x.t)}</button>`).join('')}</div>
+      ${o.done ? `
+        <div class="answerbox">
+          <div class="lbl">${o.ok ? '정답이에요 ✓' : '정답'}${it.say && it.say.t ? spkBtn('a') : ''}</div>
+          <div class="body"><b>${esc(it.answer)}</b>${it.pron ? `<span class="pron">${esc(it.pron)}</span>` : ''}</div>
+          ${it.why ? `<div class="why">${it.why}</div>` : ''}
+        </div>
+        <div class="qfoot"><button class="btn" data-next="1">다음 문제</button></div>
+      ` : `
+        <div class="qfoot">
+          <button class="btn" data-check="1" ${o.picked.length === it.tiles.length ? '' : 'disabled'}>확인</button>
+          <button class="btn plain" data-reset="1">다시</button>
+        </div>
+      `}
+    </div>
+    <div class="row"><button class="btn plain sm" data-quit="1">그만두기</button></div>
+  </div>`;
+
+  $$('[data-tile]', app).forEach(b => b.onclick = () => {
+    if (o.done) return;
+    o.picked.push(Number(b.dataset.tile));
+    TTS.stop();
+    renderOrder();
+  });
+  $$('[data-unpick]', app).forEach(b => b.onclick = () => {
+    if (o.done) return;
+    o.picked.splice(Number(b.dataset.unpick), 1);
+    renderOrder();
+  });
+  const ck = $('[data-check]', app);
+  if (ck) ck.onclick = () => {
+    o.done = true; o.ok = ok;
+    q.answers.push(ok);
+    if (ok) { if (it.key) wrongRemove(q.mode, it.key); }
+    else wrongAdd(q.mode, payloadOf(it));
+    renderOrder();
+  };
+  const rs = $('[data-reset]', app);
+  if (rs) rs.onclick = () => { o.picked = []; renderOrder(); };
+  const nx = $('[data-next]', app);
+  if (nx) nx.onclick = nextQuestion;
+  const qt = $('[data-quit]', app);
+  if (qt) qt.onclick = () => { if (confirm('그만둘까요? 지금까지의 결과는 저장되지 않아요.')) { state.quiz = null; go(state.tab); } };
+  bindSpeak(k => k === 'a' ? it.say : null);
+  bindRate(() => { if (it.say && it.say.t) TTS.say(it.say.t, it.say.c, null, it.say.n); });
+}
+
 /* ================================================================== 오답 노트 */
 function renderWrongNote() {
   const modes = Object.keys(MODE_NAME).filter(m => wrongList(m).length);
@@ -658,48 +744,151 @@ function renderWrongNote() {
 }
 
 /* ================================================================== 1. 문법 */
-async function renderGrammarSetup() {
-  loading();
-  let idx, vmeta;
-  try { [idx, vmeta] = await Promise.all([DATA.lingqIndex(), DATA.verbMeta()]); }
-  catch (e) { app.innerHTML = `<div class="card"><h2>데이터를 불러오지 못했어요</h2><p class="desc">${esc(e.message)}</p><button class="btn" onclick="location.reload()">다시 시도</button></div>`; return; }
-  const s = state.setup.grammar || (state.setup.grammar = { guide: 'es', part: -1, n: 10, vol: 1, lang: 4, tense: -1, vn: 10 });
-  const g = idx.find(x => x.key === s.guide) || idx[0];
-  const qTotal = idx.reduce((a, b) => a + b.questions, 0);
-  const verbTotal = vmeta.vols.reduce((a, b) => a + b.count, 0);
-  app.innerHTML = `<div class="screen">
-    <div class="card hero">
-      <h2>문법 테스트</h2>
-      <p class="desc">LingQ 문법 가이드 10종의 연습문제 ${qTotal}문항과, 26개 언어 동사 변화 ${verbTotal}항목.</p>
-      <div class="statrow">
-        <div><b>${idx.length}</b>가이드</div><div><b>${qTotal}</b>문법 문항</div><div><b>${verbTotal}</b>동사 항목</div>
-      </div>
-    </div>
+const GAME_NAME = { order: '문장 순서', cloze: '빈칸 채우기', pick: '어순 고르기', verb: '동사 변화' };
 
+/* ---- 공부하기: 가이드 본문 블록 ---- */
+function studyBlockHtml(b) {
+  if (b.t === 'h') return `<h${b.l} class="sh sh${b.l}">${rich(b.x)}</h${b.l}>`;
+  if (b.t === 'p') return `<p class="sp${b.cls === 'intro' ? ' intro' : ''}">${rich(b.x)}</p>`;
+  if (b.t === 'l') return `<ul class="sl">${b.x.map(x => `<li>${rich(x)}</li>`).join('')}</ul>`;
+  if (b.t === 'n') return `<div class="sbox ${esc(b.k)}">${rich(b.x)}</div>`;
+  if (b.t === 'tb') {
+    const head = (b.h && b.h.length) ? `<thead><tr>${b.h.map(h => `<th>${rich(h)}</th>`).join('')}</tr></thead>` : '';
+    const rows = (b.r || []).map(r => `<tr>${r.map(c => `<td>${rich(c)}</td>`).join('')}</tr>`).join('');
+    return `<div class="tblwrap"><table class="stbl">${head}<tbody>${rows}</tbody></table></div>`;
+  }
+  return '';
+}
+function bindSayList(says) {
+  $$('[data-say]', app).forEach(el => {
+    const m = /^s(\d+)$/.exec(el.dataset.say || '');
+    if (!m) return;
+    const d = says[Number(m[1])];
+    if (!d) return;
+    el.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); TTS.say(d.t, d.c, el, d.n); });
+  });
+}
+
+async function renderStudyView(sIdx, s) {
+  const guides = sIdx.guides;
+  const guide = guides.find(g => g.key === s.guide) || guides[0];
+  s.guide = guide.key;
+  const data = await DATA.study(guide.key);
+  const code = LANG_CODE[guide.lang] || 'es-ES';
+  const name = CODE_KO[code] || guide.key;
+  const parts = data.parts;
+  if (s.part == null || s.part < 0 || s.part >= parts.length) s.part = 0;
+  const p = parts[s.part];
+  const says = [];
+  const body = p.blocks.map(b => {
+    if (b.t !== 'ex') return studyBlockHtml(b);
+    const n = says.length;
+    says.push({ t: plainText(b.x), c: code, n });
+    return `<div class="sex">
+      <div class="sex-t">${rich(b.x)}${spkBtn('s' + n)}</div>
+      ${b.p ? `<div class="sex-p">${esc(b.p)}</div>` : ''}
+      ${b.k ? `<div class="sex-k">${esc(b.k)}</div>` : ''}
+      ${b.n ? `<div class="sex-n">${esc(b.n)}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  app.innerHTML = `<div class="screen">
+    <div class="segbar">
+      <button class="seg on" data-view="study">📖 공부하기</button>
+      <button class="seg" data-view="quiz">🧩 문제 풀기</button>
+    </div>
     <div class="card">
-      <h2>📖 문법 연습문제</h2>
-      <p class="desc">문제를 읽고 답을 떠올린 뒤 <b>정답·해설 보기</b>로 확인하고 스스로 채점합니다.</p>
       <div class="field">
-        <label>가이드</label>
-        <select id="gGuide">${idx.map(x => `<option value="${x.key}" ${x.key === g.key ? 'selected' : ''}>${esc(x.label)} — ${x.questions}문항</option>`).join('')}</select>
+        <label>문법 가이드</label>
+        <select id="stGuide">${guides.map(g => `<option value="${g.key}" ${g.key === guide.key ? 'selected' : ''}>${esc(CODE_KO[LANG_CODE[g.lang]] || g.key)} — ${g.parts}파트 · 예문 ${g.examples}</option>`).join('')}</select>
       </div>
       <div class="field">
         <label>파트</label>
-        <select id="gPart"></select>
+        <select id="stPart">${parts.map((x, i) => `<option value="${i}" ${i === s.part ? 'selected' : ''}>${esc(x.part)} ${esc(x.title)}</option>`).join('')}</select>
       </div>
-      <div class="field">
-        <label>문제 수</label>
-        <div class="chips" id="gN">${[10, 20, 30, 50].map(n => `<button class="chip ${s.n === n ? 'on' : ''}" data-n="${n}">${n}문제</button>`).join('')}</div>
-      </div>
-      <button class="btn" id="gStart">문법 문제 풀기</button>
-      <div id="gVoice" class="voiceline"></div>
-      <p class="subnote">정답·해설은 가이드 원문 그대로입니다. 문제의 🔊 를 누르면 예문의 원어 부분만 읽어 줍니다.</p>
-    </div>
-
-    <div class="card">
-      <h2>🔁 동사 시제 변화</h2>
-      <p class="desc">같은 동사·같은 시제에서 인칭만 바꾼 진짜 활용형이 보기로 나옵니다.</p>
       <div class="row">
+        <button class="btn plain sm" data-prev="1" ${s.part === 0 ? 'disabled' : ''}>← 이전</button>
+        <button class="btn plain sm" data-next="1" ${s.part >= parts.length - 1 ? 'disabled' : ''}>다음 →</button>
+        <button class="btn sm secondary" data-topractice="1">이 언어로 문제 풀기</button>
+      </div>
+      <div id="stVoice" class="voiceline"></div>
+    </div>
+    <div class="card study">
+      <div class="study-head">
+        <div class="study-num">${esc(p.part)}</div>
+        <h2>${esc(p.title)}</h2>
+        ${p.sub ? `<p class="desc">${esc(p.sub)}</p>` : ''}
+      </div>
+      ${body}
+      <div class="row" style="margin-top:14px">
+        <button class="btn plain sm" data-prev="1" ${s.part === 0 ? 'disabled' : ''}>← 이전 파트</button>
+        <button class="btn plain sm" data-next="1" ${s.part >= parts.length - 1 ? 'disabled' : ''}>다음 파트 →</button>
+      </div>
+    </div>
+  </div>`;
+
+  fillVoiceLine($('#stVoice'), code, name);
+  $('#stGuide').onchange = e => { s.guide = e.target.value; s.part = 0; renderGrammarSetup(); };
+  $('#stPart').onchange = e => { s.part = Number(e.target.value); renderGrammarSetup(); };
+  $$('[data-prev]', app).forEach(b => b.onclick = () => { if (s.part > 0) { s.part -= 1; renderGrammarSetup(); } });
+  $$('[data-next]', app).forEach(b => b.onclick = () => { if (s.part < parts.length - 1) { s.part += 1; renderGrammarSetup(); } });
+  $$('[data-view]', app).forEach(b => b.onclick = () => { s.view = b.dataset.view; renderGrammarSetup(); });
+  const tp = $('[data-topractice]', app);
+  if (tp) tp.onclick = () => { s.view = 'quiz'; s.glang = guide.lang; renderGrammarSetup(); };
+  bindSayList(says);
+  window.scrollTo(0, 0);
+}
+
+async function renderGrammarSetup() {
+  loading();
+  let sIdx, gIdx, vmeta;
+  try { [sIdx, gIdx, vmeta] = await Promise.all([DATA.studyIndex(), DATA.gamesIndex(), DATA.verbMeta()]); }
+  catch (e) {
+    app.innerHTML = `<div class="card"><h2>데이터를 불러오지 못했어요</h2><p class="desc">${esc(e.message)}</p><button class="btn" onclick="location.reload()">다시 시도</button></div>`;
+    return;
+  }
+  const s = state.setup.grammar || (state.setup.grammar = {});
+  if (!s.view) s.view = 'study';
+  if (!s.guide) s.guide = 'es';
+  if (s.part == null) s.part = 0;
+  if (!s.game) s.game = 'order';
+  if (!s.glang) s.glang = 6;
+  if (!s.gn) s.gn = 10;
+  if (!s.vol) s.vol = 1;
+  if (!s.lang) s.lang = 4;
+  if (s.tense == null) s.tense = -1;
+  if (!s.vn) s.vn = 10;
+
+  if (s.view === 'study') return renderStudyView(sIdx, s);
+
+  /* ---- 문제 풀기 ---- */
+  const vocabMeta = await DATA.vocabMeta();
+  const langName = no => (vocabMeta.langs.find(l => l.no === no) || {}).ko || String(no);
+  const g = gIdx.langs || [];
+  const has = (no, kind) => {
+    const row = g.find(x => x.no === no);
+    return row ? row[kind] : 0;
+  };
+  const listFor = kind => vocabMeta.langs.filter(l => l.no !== 1 && has(l.no, kind) > 0);
+  const isVerb = s.game === 'verb';
+  const avail = isVerb ? [] : listFor(s.game);
+  if (!isVerb && !avail.some(l => l.no === s.glang)) s.glang = avail.length ? avail[0].no : 6;
+  const verbTotal = vmeta.vols.reduce((a, b) => a + b.count, 0);
+
+  app.innerHTML = `<div class="screen">
+    <div class="segbar">
+      <button class="seg" data-view="study">📖 공부하기</button>
+      <button class="seg on" data-view="quiz">🧩 문제 풀기</button>
+    </div>
+    <div class="card">
+      <h2>문법 문제</h2>
+      <p class="desc">직접 눌러서 푸는 문제만 모았습니다. 답을 고르면 바로 채점되고 해설이 나옵니다.</p>
+      <div class="chips" id="gGame">
+        ${['order', 'cloze', 'pick', 'verb'].map(k => `<button class="chip ${s.game === k ? 'on' : ''}" data-game="${k}">${k === 'order' ? '🧩' : k === 'cloze' ? '✏️' : k === 'pick' ? '✅' : '🔁'} ${GAME_NAME[k]}</button>`).join('')}
+      </div>
+
+      ${isVerb ? `
+      <div class="row" style="margin-top:14px">
         <div class="field grow" style="min-width:130px">
           <label>권</label>
           <select id="vVol">${vmeta.vols.map(v => `<option value="${v.vol}" ${v.vol === s.vol ? 'selected' : ''}>${v.vol}권 · ${esc(vmeta.titles[String(v.vol)] || '')}</option>`).join('')}</select>
@@ -720,69 +909,109 @@ async function renderGrammarSetup() {
         <label>문제 수</label>
         <div class="chips" id="vN">${[10, 20, 30].map(n => `<button class="chip ${s.vn === n ? 'on' : ''}" data-n="${n}">${n}문제</button>`).join('')}</div>
       </div>
-      <button class="btn secondary" id="vStart">동사 변화 풀기</button>
+      <button class="btn" id="vStart">동사 변화 풀기 <span class="n">${verbTotal}항목</span></button>
+      <p class="subnote">같은 동사·같은 시제에서 인칭만 바꾼 진짜 활용형이 보기로 나옵니다.</p>
+      ` : `
+      <div class="field" style="margin-top:14px">
+        <label>언어</label>
+        <select id="gLang2">${avail.map(l => `<option value="${l.no}" ${l.no === s.glang ? 'selected' : ''}>${esc(l.ko)} — ${has(l.no, s.game)}문항</option>`).join('')}</select>
+      </div>
+      <div class="field">
+        <label>문제 수</label>
+        <div class="chips" id="gN">${[10, 20, 30, 50].map(n => `<button class="chip ${s.gn === n ? 'on' : ''}" data-n="${n}">${n}</button>`).join('')}</div>
+      </div>
+      <button class="btn" id="gStart2">${GAME_NAME[s.game]} 시작</button>
+      <div id="gVoice" class="voiceline"></div>
+      <p class="subnote">${s.game === 'order' ? '한국어 뜻을 보고 섞인 단어를 순서대로 눌러 문장을 만드세요.'
+        : s.game === 'cloze' ? '문장의 빈칸에 알맞은 말을 고르세요. 가이드 예문과 내가 보낸 문장에서 냅니다.'
+          : '같은 단어를 잘못 늘어놓은 문장과 바른 문장을 구별하세요.'}</p>
+      `}
     </div>
   </div>`;
 
-  const partSel = $('#gPart');
-  async function fillParts() {
-    const data = await DATA.lingq(s.guide);
-    const parts = data.parts;
-    partSel.innerHTML = `<option value="-1">전체 (${parts.reduce((a, p) => a + p.questions.length, 0)}문항)</option>` +
-      parts.map((p, i) => `<option value="${i}" ${s.part === i ? 'selected' : ''}>${esc(p.part)} ${esc(p.title)} (${p.questions.length})</option>`).join('');
-    const gcode = GUIDE_CODE[s.guide] || 'en-GB';
-    let sample = '';
-    for (const p of parts) {
-      for (const q of p.questions) {
-        sample = nativeFrom(q.q, gcode) || nativeFrom(q.a, gcode);
-        if (sample) break;
-      }
-      if (sample) break;
-    }
-    fillVoiceLine($('#gVoice'), gcode, sample.slice(0, 90) || CODE_KO[gcode]);
-  }
-  await fillParts();
-  $('#gGuide').onchange = e => { s.guide = e.target.value; s.part = -1; fillParts(); };
-  partSel.onchange = e => { s.part = Number(e.target.value); };
-  $$('#gN .chip').forEach(c => c.onclick = () => { s.n = Number(c.dataset.n); $$('#gN .chip').forEach(x => x.classList.toggle('on', x === c)); });
-  $$('#vTense .chip').forEach(c => c.onclick = () => { s.tense = Number(c.dataset.t); $$('#vTense .chip').forEach(x => x.classList.toggle('on', x === c)); });
-  $$('#vN .chip').forEach(c => c.onclick = () => { s.vn = Number(c.dataset.n); $$('#vN .chip').forEach(x => x.classList.toggle('on', x === c)); });
-  $('#vVol').onchange = e => { s.vol = Number(e.target.value); };
-  $('#vLang').onchange = e => { s.lang = Number(e.target.value); };
+  const fillVoice = () => {
+    const l = vocabMeta.langs.find(x => x.no === s.glang) || {};
+    fillVoiceLine($('#gVoice'), LANG_CODE[s.glang], l.native || l.ko);
+  };
+  if (!isVerb) fillVoice();
 
-  const runGrammar = async () => {
-    const data = await DATA.lingq(s.guide);
-    let pool = [];
-    data.parts.forEach((p, pi) => {
-      if (s.part >= 0 && pi !== s.part) return;
-      p.questions.forEach((q, qi) => pool.push({ p, q, pi, qi }));
-    });
-    if (!pool.length) return alert('이 파트에는 문제가 없어요.');
-    const picked = sample(pool, s.n);
-    const gcode = GUIDE_CODE[s.guide] || 'en-GB';
-    const gname = CODE_KO[gcode];
-    const items = picked.map(({ p, q, pi, qi }) => {
-      const sq = nativeFrom(q.q, gcode), sa = nativeFrom(q.a, gcode);
-      return {
-      kind: 'self',
-      title: data.label,
-      prompt: `<div class="qtext" style="font-size:16px">${rich(q.q)}</div>`,
-      sub: `<span style="color:var(--ink3)">${esc(p.part)} · ${esc(p.title)}</span>`,
-      answer: `<div class="answers-inline">${rich(q.a)}</div>`,
-      why: q.why ? rich(q.why) : '',
-      sayPrompt: sq ? { t: sq, c: gcode, n: gname } : null,
-      sayAnswer: sa ? { t: sa, c: gcode, n: gname } : null,
-      key: `${s.guide}:${pi}:${qi}`
-      };
-    });
-    lastBuilder = runGrammar;
-    startQuiz({ title: `${data.label} 문법`, mode: 'gram', items });
+  $$('[data-view]', app).forEach(b => b.onclick = () => { s.view = b.dataset.view; renderGrammarSetup(); });
+  $$('[data-game]', app).forEach(b => b.onclick = () => { s.game = b.dataset.game; renderGrammarSetup(); });
+  if (!isVerb) {
+    $('#gLang2').onchange = e => { s.glang = Number(e.target.value); renderGrammarSetup(); };
+    $$('#gN .chip').forEach(c => c.onclick = () => { s.gn = Number(c.dataset.n); $$('#gN .chip').forEach(x => x.classList.toggle('on', x === c)); });
+  }
+  if (isVerb) {
+    $$('#vTense .chip').forEach(c => c.onclick = () => { s.tense = Number(c.dataset.t); $$('#vTense .chip').forEach(x => x.classList.toggle('on', x === c)); });
+    $$('#vN .chip').forEach(c => c.onclick = () => { s.vn = Number(c.dataset.n); $$('#vN .chip').forEach(x => x.classList.toggle('on', x === c)); });
+    $('#vVol').onchange = e => { s.vol = Number(e.target.value); };
+    $('#vLang').onchange = e => { s.lang = Number(e.target.value); };
+  }
+
+  const runGame = async () => {
+    const btn = $('#gStart2');
+    if (btn) { btn.disabled = true; btn.textContent = '문제 준비 중…'; }
+    try {
+      const data = await DATA.games(s.glang);
+      const lname = langName(s.glang);
+      const code = LANG_CODE[s.glang] || '';
+      const sayOf = t => ({ t: t, c: code, n: lname });
+      let items = [];
+      if (s.game === 'order') {
+        items = sample(data.order, s.gn).map(o => {
+          let tiles = shuffle(o.t);
+          let guard = 0;
+          while (tiles.join(' ') === o.a && guard++ < 6) tiles = shuffle(o.t);
+          return {
+            kind: 'order', title: `${lname} · 문장 순서`,
+            prompt: `<div class="qtext">${esc(o.ko)}</div>`,
+            sub: `<span style="color:var(--ink3)">단어를 순서대로 눌러 ${esc(lname)} 문장을 만드세요.</span>`,
+            answer: o.a, tiles: tiles, pron: o.p || '', say: sayOf(o.a), why: '',
+            key: `g:o:${s.glang}:${o.a}`
+          };
+        });
+      } else if (s.game === 'cloze') {
+        items = sample(data.cloze, s.gn).map(c => {
+          const full = c.q.replace('____', c.opts[c.c]);
+          return {
+            kind: 'mc', title: `${lname} · 빈칸`,
+            prompt: `<div class="qtext" style="font-size:17px">${esc(c.q).replace('____', '<span class="blank">____</span>')}</div>`,
+            sub: `${c.ko ? `<b>뜻</b> ${esc(c.ko)}` : ''}${c.hint ? ` <span class="ghint">힌트 ${esc(c.hint)}</span>` : ''}`,
+            opts: c.opts.map(w => ({ html: `<b>${esc(w)}</b>` })),
+            correct: c.c,
+            answer: `<b>${esc(c.opts[c.c])}</b>`,
+            why: [c.src ? `<span class="srcline">${esc(c.src)}</span>` : '', c.why ? esc(c.why) : '',
+              c.pr ? `<span class="prline">${esc(full)} · ${esc(c.pr)}</span>` : ''].filter(Boolean).join('<br>'),
+            sayAnswer: sayOf(full),
+            key: `g:c:${s.glang}:${c.q}`
+          };
+        });
+      } else if (s.game === 'pick') {
+        items = sample(data.pick, s.gn).map(c => ({
+          kind: 'mc', title: `${lname} · 어순`,
+          prompt: `<div class="qtext">어순이 맞는 문장을 고르세요</div>`,
+          sub: `<b>뜻</b> ${esc(c.ko)}`,
+          opts: c.opts.map(s2 => ({ html: esc(s2) })),
+          correct: c.c,
+          answer: esc(c.a),
+          why: '', sayAnswer: sayOf(c.a),
+          key: `g:p:${s.glang}:${c.a}`
+        }));
+      }
+      if (!items.length) { alert('이 언어에는 아직 문제가 없어요. 다른 언어를 골라 주세요.'); return; }
+      lastBuilder = runGame;
+      startQuiz({ title: `${GAME_NAME[s.game]} · ${lname}`, mode: 'gram', items });
+    } catch (e) {
+      alert('문제를 만드는 중 오류: ' + e.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = `${GAME_NAME[s.game]} 시작`; }
+    }
   };
 
   const runVerb = async () => {
-    const [meta, rows, lang] = await Promise.all([DATA.verbMeta(), DATA.verbItems(s.vol), DATA.verbLang(s.vol, s.lang)]);
-    const lname = (meta.langs.find(l => l.no === s.lang) || {}).ko || '';
-    const pool = rows.map((r, i) => i).filter(i => (s.tense < 0 || rows[i][3] === meta.tenses[s.tense]) && lang[i] && lang[i][0]);
+    const [metaV, rows, lang] = await Promise.all([DATA.verbMeta(), DATA.verbItems(s.vol), DATA.verbLang(s.vol, s.lang)]);
+    const lname = (metaV.langs.find(l => l.no === s.lang) || {}).ko || '';
+    const pool = rows.map((r, i) => i).filter(i => (s.tense < 0 || rows[i][3] === metaV.tenses[s.tense]) && lang[i] && lang[i][0]);
     const picked = sample(pool, s.vn);
     const takeUnique = (cands, used) => {
       const seen = new Set(used);
@@ -830,8 +1059,8 @@ async function renderGrammarSetup() {
     startQuiz({ title: `동사 변화 · ${lname}`, mode: 'verb', items });
   };
 
-  $('#gStart').onclick = runGrammar;
-  $('#vStart').onclick = runVerb;
+  const gs = $('#gStart2'); if (gs) gs.onclick = runGame;
+  const vs = $('#vStart'); if (vs) vs.onclick = runVerb;
 }
 
 /* ================================================================== 2. 단어 */

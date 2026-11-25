@@ -294,3 +294,64 @@ select { background-image: linear-gradient(45deg, transparent 50%, var(--ink3) 5
 .subnote { font-size: 12px; color: var(--ink3); margin-top: 6px; line-height: 1.45; }
 .answers-inline { font-size: 14px; }
 .answers-inline b { color: var(--accent); }
+
+/* ---------------------------------------------------------------- 문법 공부 */
+.segbar {
+  display: flex; gap: 5px; background: var(--card); border: 1px solid var(--line);
+  border-radius: 13px; padding: 4px; margin-bottom: 12px;
+}
+.seg {
+  flex: 1; border: 0; background: none; border-radius: 10px; padding: 11px 8px;
+  font-size: 14px; font-weight: 700; color: var(--ink2); white-space: nowrap;
+}
+.seg.on { background: var(--accent); color: #fff; }
+
+.study-head { border-left: 3px solid var(--accent); padding: 1px 0 1px 12px; margin-bottom: 14px; }
+.study-num { font-size: 11.5px; font-weight: 800; letter-spacing: .12em; color: var(--accent); }
+.study-head h2 { font-size: 19px; margin-top: 3px; line-height: 1.3; }
+.study-head .desc { margin: 4px 0 0; }
+
+.sh { margin: 20px 0 8px; line-height: 1.4; }
+.sh2 { font-size: 16px; padding-bottom: 5px; border-bottom: 1px solid var(--line); }
+.sh3 { font-size: 14.5px; color: var(--accent); }
+.sh4 { font-size: 13.5px; }
+.sp { font-size: 14px; line-height: 1.72; margin: 0 0 10px; word-break: keep-all; }
+.sp.intro { background: var(--gold-soft); border-radius: 10px; padding: 12px 14px; font-size: 13.5px; color: var(--ink2); }
+.sl { margin: 0 0 10px; padding-left: 18px; font-size: 13.5px; line-height: 1.7; }
+.sl li { margin-bottom: 4px; }
+.sbox { border-radius: 10px; padding: 11px 13px; font-size: 13px; line-height: 1.65; margin: 10px 0; background: var(--accent-soft); border-left: 3px solid var(--accent); }
+.sbox.tip { background: var(--green-soft); border-left-color: var(--green); }
+.sbox.warn { background: var(--red-soft); border-left-color: var(--red); }
+.tblwrap { overflow-x: auto; margin: 10px 0; -webkit-overflow-scrolling: touch; }
+.stbl { border-collapse: collapse; font-size: 12.5px; }
+.stbl th { background: var(--accent); color: #fff; font-weight: 700; padding: 7px 9px; text-align: left; white-space: nowrap; }
+.stbl td { border: 1px solid var(--line); padding: 6px 9px; vertical-align: top; line-height: 1.5; }
+.stbl tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--line) 20%, transparent); }
+.sex { border-left: 2px solid var(--line); padding: 1px 0 1px 10px; margin: 0 0 10px; }
+.sex-t { font-size: 14.5px; font-weight: 600; line-height: 1.5; word-break: keep-all; }
+.sex-p { font-size: 12.5px; color: var(--ink3); margin-top: 3px; }
+.sex-k { font-size: 13px; color: var(--ink2); margin-top: 2px; }
+.sex-n { font-size: 12px; color: var(--gold); margin-top: 3px; line-height: 1.5; }
+.sex .spk { width: 26px; height: 26px; font-size: 12px; vertical-align: -8px; margin-left: 4px; }
+
+/* 어순 배열 */
+.orderbuilt {
+  min-height: 54px; display: flex; flex-wrap: wrap; gap: 7px; align-items: flex-start;
+  padding: 11px; border: 1.5px dashed var(--line); border-radius: 12px; margin: 14px 0 10px;
+  background: color-mix(in srgb, var(--line) 16%, transparent);
+}
+.orderbuilt.ok { border-color: var(--green); background: var(--green-soft); }
+.orderbuilt.no { border-color: var(--red); background: var(--red-soft); }
+.tiles { display: flex; flex-wrap: wrap; gap: 7px; }
+.tile {
+  border: 1.5px solid var(--line); background: var(--card); border-radius: 10px;
+  padding: 9px 13px; font-size: 15px; font-weight: 600; color: var(--ink); line-height: 1.3;
+}
+.tile:active { filter: brightness(.95); }
+.tile.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.tile-ghost { font-size: 12.5px; color: var(--ink3); }
+.blank { display: inline-block; min-width: 40px; border-bottom: 2px solid var(--accent); color: var(--accent); font-weight: 800; text-align: center; }
+.ghint { display: inline-block; font-size: 11.5px; font-weight: 700; color: var(--gold); background: var(--gold-soft); border-radius: 999px; padding: 2px 8px; margin-left: 4px; }
+.srcline { font-size: 11.5px; color: var(--accent); font-weight: 700; }
+.prline { color: var(--ink3); font-size: 12.5px; }
+.answerbox .body .pron { display: block; margin-top: 6px; font-size: 13px; color: var(--ink2); }
