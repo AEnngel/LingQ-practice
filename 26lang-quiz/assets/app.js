@@ -712,7 +712,7 @@ async function renderWordsSetup() {
             opts: optsRaw.map(o => ({ html: `<b>${esc(lang[o.j][0])}</b>`, note: pronText(lang[o.j][1]) ? esc(pronText(lang[o.j][1])) : '' })),
             correct: correctIdx,
             why: '',
-            extra: pronLine(pron) ? `<b>${esc(nat)}</b> ${pronLine(pron)}` : '',
+            extra: '',
             key: `w:${s.lang}:${i}`
           };
         } else {
