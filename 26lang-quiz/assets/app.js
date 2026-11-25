@@ -827,7 +827,6 @@ async function renderSentSetup() {
   fillGroups();
   $('#sSearch').oninput = e => { s.search = e.target.value; fillGroups(); };
   groupSel.onchange = e => { s.group = Number(e.target.value); };
-  $('#wBatch').onchange = e => { s.batch = Number(e.target.value); };
   $('#sLang').onchange = e => { s.lang = Number(e.target.value); };
   $$('#sMode .chip').forEach(c => c.onclick = () => { s.mode = c.dataset.v; $$('#sMode .chip').forEach(x => x.classList.toggle('on', x === c)); $('#sDirBox').classList.toggle('hidden', s.mode === 'card'); });
   $$('#sDir .chip').forEach(c => c.onclick = () => { s.dir = c.dataset.v; $$('#sDir .chip').forEach(x => x.classList.toggle('on', x === c)); });
