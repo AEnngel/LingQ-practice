@@ -214,7 +214,7 @@ function bindSpeak(get) {
 function rateBarHtml() {
   const r = Number(SET.rate) || 1;
   return `<div class="ratebar">
-    <span class="rlbl">🔊 배속</span>
+    <span class="rlbl">듣기 배속</span>
     ${RATES.map(x => `<button type="button" class="rate ${Math.abs(r - x) < 0.01 ? 'on' : ''}" data-rate="${x}"><b>${x}x</b>${x === 0.5 ? '<i>느리게</i>' : x === 1 ? '<i>보통</i>' : x === 2 ? '<i>빠르게</i>' : ''}</button>`).join('')}
   </div>`;
 }
