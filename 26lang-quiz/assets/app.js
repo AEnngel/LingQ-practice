@@ -13,7 +13,7 @@ const store = {
   del(k) { try { localStorage.removeItem('lq.' + k); } catch (e) { } }
 };
 
-const SET = Object.assign({ pron: true, tone: true, rate: 1 }, store.get('settings', {}));
+const SET = Object.assign({ pron: true, tone: true, rate: 1, tileSound: true }, store.get('settings', {}));
 function saveSet() { store.set('settings', SET); }
 
 const MODE_NAME = { words: '단어', sent: '내 문장', gram: '문법 연습', verb: '동사 변화' };
@@ -46,6 +46,24 @@ const CODE_FALLBACK = {
   'nb-NO': ['no-NO', 'da-DK'], 'ga-IE': [], 'is-IS': []
 };
 const RATES = [0.5, 1, 1.5, 2];
+/* 언어별 기본 어순 (문장 순서 화면 상단 힌트) */
+const ORDER_HINT = {
+  2: '주어 → 동사 → 목적어', 3: '주어 → 동사 → 목적어', 4: '주어 → 동사(2번째 자리) → 목적어',
+  5: '주어 → 동사 → 목적어', 6: '주어 → 동사 → 목적어', 7: '주어 → 동사 → 목적어',
+  8: '주어 → 동사 → 목적어', 9: '주어 → 목적어 → 동사', 10: '주어 → 동사(2번째 자리) → 목적어',
+  11: '주어 → 동사 → 목적어', 12: '동사 → 주어 → 목적어', 13: '주어 → 동사 → 목적어',
+  14: '주어 → 동사 → 목적어', 15: '주어 → 동사 → 목적어', 16: '주어 → 동사 → 목적어',
+  17: '주어 → 동사 → 목적어', 18: '주어 → 동사 → 목적어', 19: '주어 → 동사 → 목적어',
+  20: '주어 → 동사 → 목적어', 21: '주어 → 동사 → 목적어', 22: '주어 → 동사 → 목적어',
+  23: '주어 → 동사(2번째 자리) → 목적어', 24: '주어 → 목적어 → 동사',
+  25: '주어 → 동사 → 목적어', 26: '주어 → 동사 → 목적어'
+};
+function orderHintOf(no) { return ORDER_HINT[no] || ''; }
+/* 타일 표시: 단어 (역할) */
+function tileHtml(word, role, cls, attr) {
+  const r = role ? ` <span class="role">(${esc(role)})</span>` : '';
+  return `<button class="${cls}" ${attr}>${esc(word)}${r}</button>`;
+}
 
 let toastTimer = null;
 function toast(msg, ms) {
@@ -513,7 +531,8 @@ function payloadOf(it) {
   }
   if (it.kind === 'order') {
     return { key: it.key, kind: 'order', title: it.title || '', prompt: it.prompt, sub: it.sub || '',
-      answer: it.answer, tiles: it.tiles || [], pron: it.pron || '', opts: [], correct: -1,
+      answer: it.answer, tiles: it.tiles || [], roles: it.roles || [], orderHint: it.orderHint || '',
+      pron: it.pron || '', opts: [], correct: -1,
       why: it.why || '', extra: '', sayA: it.say || null };
   }
   return {
@@ -531,7 +550,8 @@ function itemFromPayload(p) {
   }
   if (p.kind === 'order') {
     return { kind: 'order', title: p.title, key: p.key, prompt: p.prompt, sub: p.sub,
-      answer: p.answer, tiles: p.tiles || [], pron: p.pron || '', why: p.why || '', say: p.sayA || null };
+      answer: p.answer, tiles: p.tiles || [], roles: p.roles || [], orderHint: p.orderHint || '',
+      pron: p.pron || '', why: p.why || '', say: p.sayA || null };
   }
   return { kind: p.kind === 'self' ? 'self' : 'mc', prompt: p.prompt, sub: p.sub, opts: p.opts,
     correct: p.correct, answer: p.answer, why: p.why, extra: p.extra, key: p.key, title: p.title,
@@ -650,8 +670,9 @@ function renderOrder() {
   const norm = t => String(t || '').replace(/\s+/g, ' ').trim();
   const built = o.picked.map(i => it.tiles[i]).join(' ');
   const ok = norm(built) === norm(it.answer);
+  const roleOf = i => (it.roles && it.roles[i]) || '';
   const pickedHtml = o.picked.length
-    ? o.picked.map((ti, pos) => `<button class="tile on" data-unpick="${pos}">${esc(it.tiles[ti])}</button>`).join('')
+    ? o.picked.map((ti, pos) => tileHtml(it.tiles[ti], roleOf(ti), 'tile on', `data-unpick="${pos}"`)).join('')
     : `<span class="tile-ghost">단어를 차례로 눌러 보세요</span>`;
   const pool = it.tiles.map((t, i) => ({ t, i })).filter(x => !o.picked.includes(x.i));
 
@@ -662,11 +683,15 @@ function renderOrder() {
     </div>
     <div class="progress"><i style="width:${pct}%"></i></div>
     ${rateBarHtml()}
+    <div class="orderbar">
+      ${it.orderHint ? `<span class="ohint">어순 힌트 <b>${esc(it.orderHint)}</b></span>` : ''}
+      <button type="button" class="sndbtn ${SET.tileSound ? 'on' : ''}" data-tile-sound="1" aria-pressed="${SET.tileSound ? 'true' : 'false'}">${SET.tileSound ? '🔊 단어 소리 켜짐' : '🔇 단어 소리 꺼짐'}</button>
+    </div>
     <div class="card">
       ${it.prompt}
       ${it.sub ? `<div class="qsub">${it.sub}</div>` : ''}
       <div class="orderbuilt ${o.done ? (o.ok ? 'ok' : 'no') : ''}">${pickedHtml}</div>
-      <div class="tiles">${pool.map(x => `<button class="tile" data-tile="${x.i}">${esc(x.t)}</button>`).join('')}</div>
+      <div class="tiles">${pool.map(x => tileHtml(x.t, roleOf(x.i), 'tile', `data-tile="${x.i}"`)).join('')}</div>
       ${o.done ? `
         <div class="answerbox">
           <div class="lbl">${o.ok ? '정답이에요 ✓' : '정답'}${it.say && it.say.t ? spkBtn('a') : ''}</div>
@@ -686,10 +711,19 @@ function renderOrder() {
 
   $$('[data-tile]', app).forEach(b => b.onclick = () => {
     if (o.done) return;
-    o.picked.push(Number(b.dataset.tile));
-    TTS.stop();
+    const ti = Number(b.dataset.tile);
+    o.picked.push(ti);
+    if (SET.tileSound && it.say) TTS.say(it.tiles[ti], it.say.c, null, it.say.n);
+    else TTS.stop();
     renderOrder();
   });
+  const snd = $('[data-tile-sound]', app);
+  if (snd) snd.onclick = () => {
+    SET.tileSound = !SET.tileSound;
+    saveSet();
+    if (!SET.tileSound) TTS.stop();
+    renderOrder();
+  };
   $$('[data-unpick]', app).forEach(b => b.onclick = () => {
     if (o.done) return;
     o.picked.splice(Number(b.dataset.unpick), 1);
@@ -984,14 +1018,17 @@ async function renderGrammarSetup() {
       let items = [];
       if (s.game === 'order') {
         items = sample(data.order, s.gn).map(o => {
-          let tiles = shuffle(o.t);
+          let order = shuffle(o.t.map((_, i) => i));
           let guard = 0;
-          while (tiles.join(' ') === o.a && guard++ < 6) tiles = shuffle(o.t);
+          while (order.map(i => o.t[i]).join(' ') === o.a && guard++ < 6) order = shuffle(order);
+          const tiles = order.map(i => o.t[i]);
+          const roles = order.map(i => (o.r && o.r[i]) || '');
           return {
             kind: 'order', title: `${lname} · 문장 순서`,
             prompt: `<div class="qtext">${esc(o.ko)}</div>`,
             sub: `<span style="color:var(--ink3)">단어를 순서대로 눌러 ${esc(lname)} 문장을 만드세요.</span>`,
-            answer: o.a, tiles: tiles, pron: o.p || '', say: sayOf(o.a), why: '',
+            answer: o.a, tiles: tiles, roles: roles, orderHint: orderHintOf(s.glang),
+            pron: o.p || '', say: sayOf(o.a), why: '',
             key: `g:o:${s.glang}:${o.a}`
           };
         });
