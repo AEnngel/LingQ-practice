@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LingQ 미니 스토리 1b — 30개 언어 연습장</title>
+<style>
+  :root {
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --primary: #2563eb;
+    --primary-light: #eff6ff;
+    --text: #0f172a;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --stress: #dc2626;
+    --tone: #059669;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding-bottom: 60px;
+  }
+  header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-inner {
+    max-width: 960px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  h1 { font-size: 1.15rem; font-weight: 800; color: var(--primary); }
+  .tabs { display: flex; gap: 6px; }
+  .tab-btn {
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .tab-btn.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+  }
+  main { max-width: 960px; margin: 20px auto; padding: 0 16px; }
+  .controls {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  select, button {
+    font-family: inherit;
+    font-size: 0.92rem;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #fff;
+    cursor: pointer;
+  }
+  select { font-weight: 600; min-width: 210px; }
+  .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 600; }
+  .btn-toggle.active { background: #fef3c7; border-color: #f59e0b; color: #92400e; font-weight: 600; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 2px 8px rgba(15,23,42,0.04);
+  }
+  .card-top {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    row-gap: 2px;
+    margin-bottom: 14px;
+    color: var(--muted);
+    font-size: 0.88rem;
+    font-weight: 600;
+  }
+  .orig-text {
+    font-size: 1.45rem;
+    font-weight: 700;
+    margin-bottom: 14px;
+    word-break: keep-all;
+  }
+  .box {
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .box-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .pron-text { font-size: 1.05rem; font-weight: 600; }
+  .nat-text { font-size: 1.05rem; font-weight: 600; color: #0f766e; }
+  .ko-text { font-size: 1.02rem; color: #1e293b; }
+  .hidden-blur { filter: blur(6px); user-select: none; cursor: pointer; }
+  .tag-stress { color: var(--stress); font-size: 0.8em; font-weight: 800; }
+  .tag-tone { color: var(--tone); font-size: 0.8em; font-weight: 800; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 14px;
+    font-size: 0.92rem;
+  }
+  th, td {
+    border-bottom: 1px solid var(--border);
+    padding: 9px 10px;
+    text-align: left;
+  }
+  th { background: var(--bg); color: var(--muted); font-weight: 700; }
+  .nav-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 18px;
+    gap: 10px;
+  }
+  .pill-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .pill {
+    padding: 5px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: #fff;
+    font-size: 0.82rem;
+  }
+  .pill.active { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 700; }
+  .quiz-opt {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 12px 14px;
+    margin-top: 8px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #fff;
+    font-size: 0.96rem;
+  }
+  .quiz-opt.correct { background: #dcfce7; border-color: #16a34a; color: #14532d; font-weight: 700; }
+  .quiz-opt.wrong { background: #fee2e2; border-color: #dc2626; color: #7f1d1d; }
+  .compare-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
+  }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <h1>LingQ 미니 스토리 1b — 30개 언어 연습장</h1>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="setMode('card', this)">카드 학습</button>
+      <button class="tab-btn" onclick="setMode('quiz', this)">퀴즈 연습</button>
+      <button class="tab-btn" onclick="setMode('compare', this)">언어 비교</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- 카드 학습 -->
+  <section id="mode-card">
+    <div class="controls">
+      <select id="lang-select" onchange="selectLang(this.value)"></select>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button class="btn-primary" onclick="speakSentence(1.0)">🔊 듣기</button>
+        <button onclick="speakSentence(0.7)">🐢 느리게</button>
+        <button onclick="showVoiceDiag()">🩺 소리 진단</button>
+        <button id="toggle-pron" class="btn-toggle" onclick="toggleHide('pron')">발음 가리기</button>
+        <button id="toggle-ko" class="btn-toggle" onclick="toggleHide('ko')">해석 가리기</button>
+        <button id="toggle-tbl" class="btn-toggle" onclick="toggleHide('tbl')">단어표 가리기</button>
+      </div>
+    </div>
+
+    <div class="pill-list" id="sent-pills"></div>
+
+    <div class="card" id="card-body"></div>
+
+    <div class="nav-row">
+      <button onclick="prevSent()">← 이전 문장</button>
+      <span id="sent-counter" style="font-weight:700; color:var(--muted);"></span>
+      <button onclick="nextSent()">다음 문장 →</button>
+    </div>
+  </section>
+
+  <!-- 퀴즈 모드 -->
+  <section id="mode-quiz" class="hidden">
+    <div class="controls">
+      <select id="quiz-lang-select" onchange="newQuiz()"></select>
+      <button class="btn-primary" onclick="newQuiz()">새 문제 내기</button>
+    </div>
+    <div class="card" id="quiz-body"></div>
+  </section>
+
+  <!-- 비교 모드 -->
+  <section id="mode-compare" class="hidden">
+    <div class="controls">
+      <select id="cmp-1" onchange="renderCompare()"></select>
+      <select id="cmp-2" onchange="renderCompare()"></select>
+      <select id="cmp-3" onchange="renderCompare()"></select>
+    </div>
+    <div class="pill-list" id="cmp-pills"></div>
+    <div class="compare-grid" id="compare-grid"></div>
+  </section>
+</main>
+
+<script>
+var ORDINALS = ["첫째","둘째","셋째","넷째","다섯째","여섯째","일곱째","여덟째","아홉째","열째","열한째"];
+var DATA = [
+  { id:"01", name:"한국어", native:"한국어", tts:"ko-KR", sents:[
+    { o:"같은 이야기를 다르게 표현하면 다음과 같습니다.", p:"같은 이야기를 다르게 표현하면 다음과 같습니다.", k:"같은 이야기를 다르게 표현하면 다음과 같습니다.", w:[["같은","형용사","같다 + 은"],["이야기를","명사+조사","이야기 + 를"],["다르게","부사","다르다 + 게"],["표현하면","동사","표현하다 + 면"],["다음과","부사","다음 + 과"],["같습니다","형용사","같다"]] },
+    { o:"저는 매일 아침 6시에 일어나요.", p:"저는 매일 아침 여섯 시에 일어나요.", k:"저는 매일 아침 6시에 일어나요.", w:[["저는","대명사+조사","나(겸양) + 는"],["매일","부사","날마다"],["아침","명사","morning"],["6시에","명사+조사","여섯 시 + 에"],["일어나요","동사","잠에서 깨다"]] },
+    { o:"저는 아침을 만들고 커피를 마셔요.", p:"저는 아침을 만들고 커피를 마셔요.", k:"저는 아침을 만들고 커피를 마셔요.", w:[["저는","대명사+조사","나는"],["아침을","명사+조사","아침 식사 + 을"],["만들고","동사","만들다 + 고"],["커피를","명사+조사","커피 + 를"],["마셔요","동사","마시다"]] },
+    { o:"저는 자가용을 타고 출근해요.", p:"저는 자가용을 타고 출근해요.", k:"저는 자가용을 타고 출근해요.", w:[["저는","대명사+조사","나는"],["자가용을","명사+조사","자기 차 + 을"],["타고","동사","타다 + 고"],["출근해요","동사","일하러 가다"]] },
+    { o:"제 일은 아침 일곱 시 삼십 분에 시작해요.", p:"제 일은 아침 일곱 시 삼십 분에 시작해요.", k:"제 일은 아침 일곱 시 삼십 분에 시작해요.", w:[["제","대명사","저의 준말"],["일은","명사+조사","일 + 은"],["아침","명사","morning"],["일곱 시 삼십 분에","명사+조사","7시 30분에"],["시작해요","동사","시작되다"]] },
+    { o:"저는 식당의 요리사예요.", p:"저는 식당의 요리사예요.", k:"저는 식당의 요리사예요.", w:[["저는","대명사+조사","나는"],["식당의","명사+조사","식당 + 의"],["요리사예요","명사+조사","요리사 + 이에요"]] },
+    { o:"저는 배가 고픈 손님을 위해 음식을 만들어요.", p:"저는 배가 고픈 손님을 위해 음식을 만들어요.", k:"저는 배가 고픈 손님을 위해 음식을 만들어요.", w:[["배가 고픈","형용사구","배고픈"],["손님을 위해","명사+조사","손님을 위하여"],["음식을","명사+조사","음식 + 을"],["만들어요","동사","만들다"]] },
+    { o:"손님들은 다양한 나라에서 왔어요.", p:"손님들은 다양한 나라에서 왔어요.", k:"손님들은 다양한 나라에서 왔어요.", w:[["손님들은","명사+조사","손님들 + 은"],["다양한","형용사","여러 가지의"],["나라에서","명사+조사","나라 + 에서"],["왔어요","동사","오다(과거)"]] },
+    { o:"그들은 다양한 언어로 얘기해요.", p:"그들은 다양한 언어로 얘기해요.", k:"그들은 다양한 언어로 얘기해요.", w:[["그들은","대명사+조사","they + 는"],["다양한","형용사","여러 가지의"],["언어로","명사+조사","언어 + 로"],["얘기해요","동사","이야기하다"]] },
+    { o:"저는 친절한 사람들을 많이 만나요.", p:"저는 친절한 사람들을 많이 만나요.", k:"저는 친절한 사람들을 많이 만나요.", w:[["친절한","형용사","친절하다 + ㄴ"],["사람들을","명사+조사","사람들 + 을"],["많이","부사","a lot"],["만나요","동사","만나다"]] },
+    { o:"저는 손님들과 얘기할 때 행복해요.", p:"저는 손님들과 얘기할 때 행복해요.", k:"저는 손님들과 얘기할 때 행복해요.", w:[["손님들과","명사+조사","손님들 + 과"],["얘기할 때","동사+명사","이야기할 때"],["행복해요","형용사","행복하다"]] }
+  ]},
+  { id:"02", name:"영어 (영국식 RP)", native:"English (UK)", tts:"en-GB", sents:[
+    { o:"Here is the same story told in a different way.", p:"히어 이즈 더 세임[강] 스토리[강] 톨드[강] 인 어 디프런트[강] 웨이[강]", k:"같은 이야기를 다른 방식으로 들려드립니다.", w:[["Here","히어","여기"],["same","세임[강]","같은"],["story","스토리[강]","이야기"],["told","톨드[강]","들려주다"],["different","디프런트[강]","다른"],["way","웨이[강]","방식"]] },
+    { o:"I get up at six o'clock every morning.", p:"아이 겟업 앳 식스[강] 어클록[강] 에브리 모닝[강]", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["I","아이","나는"],["get up","겟업","일어나다"],["six","식스[강]","여섯"],["o'clock","어클록[강]","정각"],["every","에브리","매~마다"],["morning","모닝[강]","아침"]] },
+    { o:"I make my breakfast and drink a cup of coffee.", p:"아이 메익[강] 마이 브렉퍼스트[강] 앤 드링크[강] 어 컵[강] 어브 커피[강]", k:"나는 내 아침 식사를 만들고 커피 한 잔을 마신다.", w:[["make","메익[강]","만들다"],["breakfast","브렉퍼스트[강]","아침 식사"],["drink","드링크[강]","마시다"],["cup","컵[강]","잔"],["coffee","커피[강]","커피"]] },
+    { o:"I drive to work in my car.", p:"아이 드라이브[강] 투 웍[강] 인 마이 카[강]", k:"나는 내 차를 타고 일하러 간다.", w:[["drive","드라이브[강]","운전해 가다"],["work","웍[강]","일터"],["car","카[강]","자동차"]] },
+    { o:"My work starts at seven-thirty.", p:"마이 웍[강] 스타츠[강] 앳 세븐 써티[강]", k:"내 일은 일곱 시 삼십 분에 시작한다.", w:[["My work","마이 웍[강]","내 일"],["starts","스타츠[강]","시작하다"],["seven-thirty","세븐 써티[강]","일곱 시 삼십 분"]] },
+    { o:"I am a cook at a restaurant.", p:"아이 앰 어 쿡[강] 앳 어 레스트런트[강]", k:"나는 식당에서 요리사로 일한다.", w:[["cook","쿡[강]","요리사"],["restaurant","레스트런트[강]","식당"]] },
+    { o:"I make food for hungry customers.", p:"아이 메익[강] 푸드[강] 포 헝그리[강] 커스터머즈[강]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["food","푸드[강]","음식"],["hungry","헝그리[강]","배고픈"],["customers","커스터머즈[강]","손님들"]] },
+    { o:"The customers come from many different countries.", p:"더 커스터머즈[강] 컴[강] 프롬 메니[강] 디프런트[강] 컨트리즈[강]", k:"손님들은 여러 다른 많은 나라에서 온다.", w:[["come","컴[강]","오다"],["many","메니[강]","많은"],["countries","컨트리즈[강]","나라들"]] },
+    { o:"They speak many different languages.", p:"데이 스피크[강] 메니[강] 디프런트[강] 랭귀지즈[강]", k:"그들은 여러 가지 다른 언어를 말한다.", w:[["speak","스피크[강]","말하다"],["languages","랭귀지즈[강]","언어들"]] },
+    { o:"I can meet many friendly people.", p:"아이 캔 미트[강] 메니[강] 프렌들리[강] 피플[강]", k:"나는 친절한 사람들을 많이 만날 수 있다.", w:[["meet","미트[강]","만나다"],["friendly","프렌들리[강]","친절한"],["people","피플[강]","사람들"]] },
+    { o:"I am happy when I speak with the customers.", p:"아이 앰 해피[강] 웬 아이 스피크[강] 위드 더 커스터머즈[강]", k:"나는 손님들과 이야기할 때 행복하다.", w:[["happy","해피[강]","행복한"],["speak","스피크[강]","말하다"],["customers","커스터머즈[강]","손님들"]] }
+  ]},
+  { id:"03", name:"독일어", native:"Deutsch", tts:"de-DE", sents:[
+    { o:"Hier dieselbe Geschichte etwas anders erzählt.", p:"히어 디젤베[강] 게쉬히테[강] 에트바스[강] 안데어스[강] 에어첼트[강]", k:"여기 같은 이야기를 조금 다르게 들려줍니다.", w:[["Hier","히어","여기"],["dieselbe","디젤베[강]","같은"],["Geschichte","게쉬히테[강]","이야기"],["anders","안데어스[강]","다르게"]] },
+    { o:"Ich stehe jeden Morgen um sechs Uhr auf.", p:"이히 슈테어[강] 예덴[강] 모르겐[강] 움 젝스[강] 우어[강] 아우프", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["Ich","이히","나는"],["stehe ... auf","슈테어[강] 아우프","일어나다"],["Morgen","모르겐[강]","아침"],["sechs Uhr","젝스[강] 우어[강]","여섯 시"]] },
+    { o:"Ich mache Frühstück und trinke einen Kaffee.", p:"이히 마헤[강] 프뤼슈튀크[강] 운트 트링케[강] 아이넨[강] 카페[강]", k:"나는 아침 식사를 만들고 커피 한 잔을 마신다.", w:[["mache","마헤[강]","만들다"],["Frühstück","프뤼슈튀크[강]","아침 식사"],["trinke","트링케[강]","마시다"],["Kaffee","카페[강]","커피"]] },
+    { o:"Ich fahre mit dem Auto zur Arbeit.", p:"이히 파레[강] 미트 뎀 아우토[강] 추어[강] 아르바이트[강]", k:"나는 차를 타고 일하러 간다.", w:[["fahre","파레[강]","차로 가다"],["Auto","아우토[강]","자동차"],["Arbeit","아르바이트[강]","직장"]] },
+    { o:"Meine Arbeit beginnt um sieben Uhr dreißig.", p:"마이네[강] 아르바이트[강] 베긴트[강] 움 지벤[강] 우어[강] 드라이시히[강]", k:"내 일은 일곱 시 삼십 분에 시작된다.", w:[["Meine Arbeit","마이네[강] 아르바이트[강]","내 일"],["beginnt","베긴트[강]","시작되다"],["sieben Uhr dreißig","지벤[강] 우어[강] 드라이시히[강]","7시 30분"]] },
+    { o:"Ich bin Koch in einem Restaurant.", p:"이히 빈 코흐[강] 인 아이넴 레스토랑[강]", k:"나는 한 식당에서 요리사로 일한다.", w:[["bin","빈","~이다"],["Koch","코흐[강]","요리사"],["Restaurant","레스토랑[강]","식당"]] },
+    { o:"Ich koche für hungrige Gäste.", p:"이히 코헤[강] 퓌어 홍리게[강] 게스테[강]", k:"나는 배고픈 손님들을 위해 요리한다.", w:[["koche","코헤[강]","요리하다"],["hungrige","홍리게[강]","배고픈"],["Gäste","게스테[강]","손님들"]] },
+    { o:"Die Gäste kommen aus vielen verschiedenen Ländern.", p:"디 게스테[강] 코멘[강] 아우스 필렌[강] 페어시데넨[강] 렌데른[강]", k:"손님들은 여러 다른 많은 나라에서 온다.", w:[["kommen","코멘[강]","오다"],["verschiedenen","페어시데넨[강]","다른"],["Ländern","렌데른[강]","나라들"]] },
+    { o:"Sie sprechen viele verschiedene Sprachen.", p:"지 슈프레헨[강] 필레 페어시데네[강] 슈프라헨[강]", k:"그들은 여러 가지 다른 언어를 말한다.", w:[["sprechen","슈프레헨[강]","말하다"],["Sprachen","슈프라헨[강]","언어들"]] },
+    { o:"Ich kann viele freundliche Menschen kennenlernen.", p:"이히 칸 필레 프로인틀리헤[강] 멘셴[강] 켄넨레르넨[강]", k:"나는 친절한 사람들을 많이 만나 알게 될 수 있다.", w:[["freundliche","프로인틀리헤[강]","친절한"],["Menschen","멘셴[강]","사람들"],["kennenlernen","켄넨레르넨[강]","만나 알게 되다"]] },
+    { o:"Ich bin glücklich, wenn ich mit den Gästen spreche.", p:"이히 빈 글뤼클리히[강] 벤 이히 미트 덴 게스텐[강] 슈프레헤[강]", k:"나는 손님들과 이야기할 때 행복하다.", w:[["glücklich","글뤼클리히[강]","행복한"],["wenn","벤","~할 때"],["spreche","슈프레헤[강]","말하다"]] }
+  ]},
+  { id:"04", name:"스페인어 (유럽식)", native:"Español", tts:"es-ES", sents:[
+    { o:"Me levanto a las seis todas las mañanas.", p:"메 레반토[강] 아 라스 세이스[강] 토다스[강] 라스 마냐나스[강]", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["Me levanto","메 레반토[강]","일어나다"],["seis","세이스[강]","여섯"],["mañanas","마냐나스[강]","아침들"]] },
+    { o:"Preparo el desayuno y me tomo un café.", p:"프레파로[강] 엘 데사유노[강] 이 메 토모[강] 운 카페[강]", k:"나는 아침 식사를 만들고 커피 한 잔을 마신다.", w:[["Preparo","프레파로[강]","만들다"],["desayuno","데사유노[강]","아침 식사"],["me tomo","메 토모[강]","마시다"],["café","카페[강]","커피"]] },
+    { o:"Voy al trabajo en mi coche.", p:"보이 알 트라바호[강] 엔 미 코체[강]", k:"나는 내 차를 타고 일하러 간다.", w:[["Voy","보이","가다"],["trabajo","트라바호[강]","직장"],["coche","코체[강]","자동차"]] },
+    { o:"Mi trabajo comienza a las siete y media de la mañana.", p:"미 트라바호[강] 코미엔사[강] 아 라스 시에테[강] 이 메디아[강] 데 라 마냐나[강]", k:"내 일은 아침 일곱 시 삼십 분에 시작된다.", w:[["comienza","코미엔사[강]","시작되다"],["siete y media","시에테[강] 이 메디아[강]","7시 30분"]] },
+    { o:"Soy cocinero en un restaurante.", p:"소이 코시네로[강] 엔 운 레스토란테[강]", k:"나는 한 식당에서 요리사로 일한다.", w:[["Soy","소이","~이다"],["cocinero","코시네로[강]","요리사"],["restaurante","레스토란테[강]","식당"]] },
+    { o:"Preparo comida para clientes con ganas de comer.", p:"프레파로[강] 코미다[강] 파라 클리엔테스[강] 콘 가나스[강] 데 코메르[강]", k:"나는 먹고 싶어 하는 손님들을 위해 음식을 만든다.", w:[["comida","코미다[강]","음식"],["clientes","클리엔테스[강]","손님들"],["con ganas de comer","콘 가나스[강] 데 코메르[강]","배고픈(먹고 싶어하는)"]] },
+    { o:"Los clientes son de muchos países.", p:"로스 클리엔테스[강] 손[강] 데 무초스[강] 파이세스[강]", k:"손님들은 많은 나라에서 온다.", w:[["son de","손[강] 데","~출신이다"],["países","파이세스[강]","나라들"]] },
+    { o:"Hablan muchos idiomas distintos.", p:"아블란[강] 무초스[강] 이디오마스[강] 디스틴토스[강]", k:"그들은 여러 가지 다른 많은 언어를 말한다.", w:[["Hablan","아블란[강]","말하다"],["idiomas","이디오마스[강]","언어들"]] },
+    { o:"Puedo conocer a mucha gente amistosa.", p:"푸에도[강] 코노세르[강] 아 무차[강] 헨테[강] 아미스토사[강]", k:"나는 친절한 사람들을 많이 만날 수 있다.", w:[["Puedo conocer","푸에도[강] 코노세르[강]","만날 수 있다"],["gente amistosa","헨테[강] 아미스토사[강]","친절한 사람들"]] },
+    { o:"Soy feliz cuando hablo con los clientes.", p:"소이 펠리스[강] 쿠안도[강] 아블로[강] 콘 로스 클리엔테스[강]", k:"나는 손님들과 이야기할 때 행복하다.", w:[["feliz","펠리스[강]","행복한"],["cuando hablo","쿠안도[강] 아블로[강]","말할 때"]] }
+  ]},
+  { id:"05", name:"이탈리아어", native:"Italiano", tts:"it-IT", sents:[
+    { o:"Questa è la stessa storia raccontata da Michele:", p:"퀘스타[강] 에 라 스테사[강] 스토리아[강] 라콘타타[강] 다 미켈레[강]", k:"이것은 미켈레가 들려주는 같은 이야기입니다:", w:[["stessa","스테사[강]","같은"],["storia","스토리아[강]","이야기"],["raccontata","라콘타타[강]","들려주다"]] },
+    { o:"Mi sveglio alle sei tutte le mattine.", p:"미 스벨리오[강] 알레 세이[강] 투테[강] 레 마티네[강]", k:"나는 매일 아침 여섯 시에 잠에서 깬다.", w:[["Mi sveglio","미 스벨리오[강]","잠에서 깨다"],["sei","세이[강]","여섯"],["mattine","마티네[강]","아침들"]] },
+    { o:"Faccio colazione e bevo il caffè.", p:"파초[강] 콜라치오네[강] 에 베보[강] 일 카페[강]", k:"나는 아침을 먹고 커피를 마신다.", w:[["Faccio colazione","파초[강] 콜라치오네[강]","아침을 먹다"],["bevo","베보[강]","마시다"],["caffè","카페[강]","커피"]] },
+    { o:"Vado al lavoro con la mia macchina.", p:"바도[강] 알 라보로[강] 콘 라 미아 마키나[강]", k:"나는 내 차를 타고 일하러 간다.", w:[["Vado","바도[강]","가다"],["lavoro","라보로[강]","직장"],["macchina","마키나[강]","자동차"]] },
+    { o:"Il mio lavoro inizia alle sette e mezza.", p:"일 미오 라보로[강] 이니치아[강] 알레 세테[강] 에 메차[강]", k:"내 일은 일곱 시 삼십 분에 시작된다.", w:[["inizia","이니치아[강]","시작되다"],["sette e mezza","세테[강] 에 메차[강]","7시 30분"]] },
+    { o:"Sono un cuoco in un ristorante.", p:"소노 운 쿠오코[강] 인 운 리스토란테[강]", k:"나는 한 식당에서 요리사로 일한다.", w:[["Sono","소노","~이다"],["cuoco","쿠오코[강]","요리사"],["ristorante","리스토란테[강]","식당"]] },
+    { o:"Preparo cibo per i clienti affamati.", p:"프레파로[강] 치보[강] 페르 이 클리엔티[강] 아파마티[강]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["cibo","치보[강]","음식"],["affamati","아파마티[강]","배고픈"]] },
+    { o:"I clienti vengono da molte nazioni differenti.", p:"이 클리엔티[강] 벤고노[강] 다 몰테[강] 나치오니[강] 디페렌티[강]", k:"손님들은 여러 다른 많은 나라에서 온다.", w:[["vengono","벤고노[강]","오다"],["nazioni","나치오니[강]","나라들"]] },
+    { o:"Loro parlano molte lingue diverse.", p:"로로[강] 파를라노[강] 몰테[강] 린구에[강] 디베르세[강]", k:"그들은 여러 가지 다른 많은 언어를 말한다.", w:[["parlano","파를라노[강]","말하다"],["lingue","린구에[강]","언어들"]] },
+    { o:"Posso incontrare molte persone amichevoli.", p:"포소[강] 인콘트라레[강] 몰테[강] 페르소네[강] 아미케볼리[강]", k:"나는 친절한 사람들을 많이 만날 수 있다.", w:[["incontrare","인콘트라레[강]","만나다"],["amichevoli","아미케볼리[강]","친절한"]] },
+    { o:"Sono felice quando parlo con i clienti.", p:"소노 펠리체[강] 콴도[강] 파를로[강] 콘 이 클리엔티[강]", k:"나는 손님들과 이야기할 때 행복하다.", w:[["felice","펠리체[강]","행복한"],["parlo","파를로[강]","말하다"]] }
+  ]},
+  { id:"06", name:"포르투갈어 (유럽식)", native:"Português", tts:"pt-PT", sents:[
+    { o:"Eu levanto-me às seis todas as manhãs.", p:"에우 레반투 메[강] 아스 세이스[강] 토다스[강] 아스 마냥스[강]", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["Eu","에우","나는"],["levanto-me","레반투 메[강]","일어나다"],["manhãs","마냥스[강]","아침들"]] },
+    { o:"Eu fiz o pequeno-almoço e tomei café.", p:"에우 피스[강] 우 프케누 알모수[강] 이 토메이[강] 카페[강]", k:"나는 아침 식사를 만들고 커피를 마셨다.", w:[["fiz","피스[강]","만들었다"],["pequeno-almoço","프케누 알모수[강]","아침 식사"],["tomei","토메이[강]","마셨다"]] },
+    { o:"Eu conduzo para o trabalho no meu carro.", p:"에우 콘두주[강] 파라 우 트라발류[강] 누 메우 카후[강]", k:"나는 내 차를 몰고 일하러 간다.", w:[["conduzo","콘두주[강]","운전하다"],["carro","카후[강]","자동차"]] },
+    { o:"O meu trabalho começa às sete e meia da manhã.", p:"우 메우 트라발류[강] 쿠메사[강] 아스 세트[강] 이 메이아[강] 다 마냥[강]", k:"내 일은 아침 일곱 시 삼십 분에 시작된다.", w:[["começa","쿠메사[강]","시작되다"],["sete e meia","세트[강] 이 메이아[강]","7시 30분"]] },
+    { o:"Eu sou cozinheiro num restaurante.", p:"에우 소우[강] 쿠지녜이루[강] 눙 레슈토란트[강]", k:"나는 한 식당에서 요리사로 일한다.", w:[["cozinheiro","쿠지녜이루[강]","요리사"],["restaurante","레슈토란트[강]","식당"]] },
+    { o:"Eu faço comida para clientes esfomeados.", p:"에우 파수[강] 쿠미다[강] 파라 클리엔트스[강] 이스포미아두스[강]", k:"나는 몹시 배고픈 손님들을 위해 음식을 만든다.", w:[["comida","쿠미다[강]","음식"],["esfomeados","이스포미아두스[강]","배고픈"]] },
+    { o:"Os clientes são de vários países diferentes.", p:"우스 클리엔트스[강] 상[강] 드 바리우스[강] 파이제스[강] 디페렌트스[강]", k:"손님들은 여러 다른 나라에서 온다.", w:[["países","파이제스[강]","나라들"]] },
+    { o:"Eles falam muitas línguas diferentes.", p:"엘르스[강] 팔랑[강] 무잉타스[강] 링구아스[강] 디페렌트스[강]", k:"그들은 여러 가지 다른 많은 언어를 말한다.", w:[["falam","팔랑[강]","말하다"],["línguas","링구아스[강]","언어들"]] },
+    { o:"Eu posso conhecer muitas pessoas amigáveis.", p:"에우 포수[강] 쿠녜세르[강] 무잉타스[강] 페소아스[강] 아미가베이스[강]", k:"나는 친절한 사람들을 많이 만날 수 있다.", w:[["conhecer","쿠녜세르[강]","만나다"],["amigáveis","아미가베이스[강]","친절한"]] },
+    { o:"Eu sou feliz quando falo com os clientes.", p:"에우 소우[강] 펠리스[강] 콴두[강] 팔루[강] 콩 우스 클리엔트스[강]", k:"나는 손님들과 이야기할 때 행복하다.", w:[["feliz","펠리스[강]","행복한"],["falo","팔루[강]","말하다"]] }
+  ]},
+  { id:"07", name:"프랑스어", native:"Français", tts:"fr-FR", sents:[
+    { o:"Voici la même histoire racontée différemment.", p:"부아시[강] 라 멤[강] 이스투아르[강] 라콩테[강] 디페랑망[강]", k:"여기 같은 이야기를 다르게 들려드립니다.", w:[["Voici","부아시[강]","여기 있습니다"],["histoire","이스투아르[강]","이야기"]] },
+    { o:"Je me lève à six heures tous les matins.", p:"주 므레브[강] 아 시스[강] 외르[강] 투 레 마탱[강]", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["Je me lève","주 므레브[강]","나는 일어난다"],["matins","마탱[강]","아침들"]] },
+    { o:"Je déjeune et bois mon café.", p:"주 데죈[강] 에 부아[강] 몽 카페[강]", k:"나는 아침을 먹고 내 커피를 마신다.", w:[["déjeune","데죈[강]","아침을 먹다"],["bois","부아[강]","마시다"]] },
+    { o:"Je vais en voiture au travail.", p:"주 베[강] 앙 부아튀르[강] 오 트라바이[강]", k:"나는 차를 타고 일하러 간다.", w:[["voiture","부아튀르[강]","자동차"],["travail","트라바이[강]","직장"]] },
+    { o:"Mon travail commence à sept heures et demie du matin.", p:"몽 트라바이[강] 코망스[강] 아 세트[강] 외르[강] 에 드미[강] 뒤 마탱[강]", k:"내 일은 아침 일곱 시 삼십 분에 시작된다.", w:[["commence","코망스[강]","시작되다"],["sept heures et demie","세트[강] 외르[강] 에 드미[강]","7시 30분"]] },
+    { o:"Je suis cuisinier dans un restaurant.", p:"주 쉬 퀴지녜[강] 당 쟁 레스토랑[강]", k:"나는 한 식당에서 요리사로 일한다.", w:[["cuisinier","퀴지녜[강]","요리사"],["restaurant","레스토랑[강]","식당"]] },
+    { o:"Je prépare de la nourriture pour les clients affamés.", p:"주 프레파르[강] 드 라 누리튀르[강] 푸르 레 클리앙[강] 아파메[강]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["nourriture","누리튀르[강]","음식"],["affamés","아파메[강]","배고픈"]] },
+    { o:"Les clients viennent de beaucoup de pays.", p:"레 클리앙[강] 비엔[강] 드 보쿠[강] 드 페이[강]", k:"손님들은 많은 나라에서 온다.", w:[["viennent","비엔[강]","오다"],["pays","페이[강]","나라들"]] },
+    { o:"Ils parlent beaucoup de langues différentes.", p:"일 파를[강] 보쿠[강] 드 랑그[강] 디페랑트[강]", k:"그들은 여러 가지 다른 언어를 많이 말한다.", w:[["parlent","파를[강]","말하다"],["langues","랑그[강]","언어들"]] },
+    { o:"Je peux rencontrer beaucoup de gens sympathiques.", p:"주 푀[강] 랑콩트레[강] 보쿠[강] 드 장[강] 상파티크[강]", k:"나는 친절한 사람들을 많이 만날 수 있다.", w:[["rencontrer","랑콩트레[강]","만나다"],["sympathiques","상파티크[강]","친절한"]] },
+    { o:"Je suis content quand je parle aux clients.", p:"주 쉬 콩탕[강] 캉[강] 주 파를[강] 오 클리앙[강]", k:"나는 손님들과 이야기할 때 기쁘다.", w:[["content","콩탕[강]","기쁜"],["parle","파를[강]","말하다"]] }
+  ]},
+  { id:"08", name:"네덜란드어", native:"Nederlands", tts:"nl-NL", sents:[
+    { o:"Ik sta elke ochtend om 6 uur op.", p:"익 스타[강] 엘커[강] 오흐텐트[강] 옴 제스[강] 위르[강] 오프", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["Ik sta ... op","익 스타[강] 오프","나는 일어난다"],["ochtend","오흐텐트[강]","아침"]] },
+    { o:"Ik maak ontbijt en ik drink een kop koffie.", p:"익 마크[강] 온바이트[강] 엔 익 드링크[강] 언 콥[강] 코피[강]", k:"나는 아침 식사를 만들고 커피 한 잔을 마신다.", w:[["ontbijt","온바이트[강]","아침 식사"],["koffie","코피[강]","커피"]] },
+    { o:"Ik ga met de auto naar mijn werk.", p:"익 하[강] 메트 더 아우토[강] 나르 메인 베르크[강]", k:"나는 내 차를 타고 일하러 간다.", w:[["auto","아우토[강]","자동차"],["werk","베르크[강]","직장"]] },
+    { o:"Mijn werk begint om half acht 's ochtends.", p:"메인 베르크[강] 베힌트[강] 옴 할프 아흐트[강] 스 오흐텐츠", k:"내 일은 아침 일곱 시 삼십 분에 시작된다.", w:[["half acht","할프 아흐트[강]","7시 30분(8시 반 전)"]] },
+    { o:"Ik ben kok in een restaurant.", p:"익 벤 콕[강] 인 언 레스토란트[강]", k:"나는 한 식당에서 요리사로 일한다.", w:[["kok","콕[강]","요리사"],["restaurant","레스토란트[강]","식당"]] },
+    { o:"Ik maak eten voor hongerige klanten.", p:"익 마크[강] 에텐[강] 보르 홍허리허[강] 클란텐[강]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["eten","에텐[강]","음식"],["hongerige","홍허리허[강]","배고픈"]] },
+    { o:"De klanten komen uit veel verschillende landen.", p:"더 클란텐[강] 코멘[강] 아위트 베일[강] 퍼르스힐렌더[강] 란덴[강]", k:"손님들은 여러 다른 많은 나라에서 온다.", w:[["landen","란덴[강]","나라들"]] },
+    { o:"Ze spreken veel verschillende talen.", p:"저 스프레컨[강] 베일[강] 퍼르스힐렌더[강] 탈렌[강]", k:"그들은 여러 다른 많은 언어를 말한다.", w:[["talen","탈렌[강]","언어들"]] },
+    { o:"Ik ontmoet veel vriendelijke mensen.", p:"익 온트무트[강] 베일[강] 프린덜러커[강] 멘선[강]", k:"나는 친절한 사람들을 많이 만난다.", w:[["ontmoet","온트무트[강]","만나다"],["vriendelijke","프린덜러커[강]","친절한"]] },
+    { o:"Ik ben blij als ik met de klanten praat.", p:"익 벤 블라이[강] 알스 익 메트 더 클란텐[강] 프라트[강]", k:"나는 손님들과 이야기할 때 행복하다.", w:[["blij","블라이[강]","행복한"],["praat","프라트[강]","말하다"]] }
+  ]},
+  { id:"09", name:"노르웨이어", native:"Norsk bokmål", tts:"nb-NO", sents:[
+    { o:"Her er den samme historien, fortalt på en annen måte.", p:"헤르 에르 덴 삼메[강] 히스토리엔[강] 포르탈트[강] 포 엔 안넨[강] 모테[강]", k:"여기 같은 이야기를 다른 방식으로 들려드립니다.", w:[["historien","히스토리엔[강]","이야기"]] },
+    { o:"Jeg står opp klokken seks hver morgen.", p:"예이 스토르[강] 오프 클로켄[강] 섹스[강] 베르[강] 모르엔[강]", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["Jeg","예이","나는"],["står opp","스토르[강] 오프","일어나다"]] },
+    { o:"Jeg lager frokost og drikker en kopp med kaffe.", p:"예이 라게르[강] 프로코스트[강] 오 드리케르[강] 엔 콥[강] 메드 카페[강]", k:"나는 아침 식사를 만들고 커피가 든 잔을 마신다.", w:[["frokost","프로코스트[강]","아침 식사"]] },
+    { o:"Jeg kjører bil til jobben.", p:"예이 셰레르[강] 빌[강] 틸 요벤[강]", k:"나는 차를 몰고 직장으로 간다.", w:[["bil","빌[강]","자동차"],["jobben","요벤[강]","직장"]] },
+    { o:"Jobben min starter klokken halv åtte.", p:"요벤[강] 민 스타르테르[강] 클로켄[강] 할 오테[강]", k:"내 일은 일곱 시 삼십 분에 시작된다.", w:[["halv åtte","할 오테[강]","7시 30분"]] },
+    { o:"Jeg er kokk på en restaurant.", p:"예이 에르 콕[강] 포 엔 레스토랑[강]", k:"나는 한 식당에서 요리사로 일한다.", w:[["kokk","콕[강]","요리사"]] },
+    { o:"Jeg lager mat til sultne gjester.", p:"예이 라게르[강] 마트[강] 틸 술트네[강] 예스테르[강]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["sultne","술트네[강]","배고픈"],["gjester","예스테르[강]","손님들"]] },
+    { o:"Gjestene kommer fra mange ulike land.", p:"예스테네[강] 코메르[강] 프라 망에[강] 울리케[강] 란[강]", k:"손님들은 여러 다른 많은 나라에서 온다.", w:[["land","란[강]","나라들"]] },
+    { o:"De snakker mange forskjellige språk.", p:"디 스나케르[강] 망에[강] 포르셀리게[강] 스프로크[강]", k:"그들은 여러 가지 다른 많은 언어를 말한다.", w:[["språk","스프로크[강]","언어들"]] },
+    { o:"Jeg får møte mange vennlige folk.", p:"예이 포르[강] 뫼테[강] 망에[강] 벤리게[강] 포크[강]", k:"나는 친절한 사람들을 많이 만나게 된다.", w:[["vennlige","벤리게[강]","친절한"]] },
+    { o:"Jeg trives når jeg får snakke med gjestene.", p:"예이 트리베스[강] 노르 예이 포르[강] 스나케[강] 메드 예스테네[강]", k:"나는 손님들과 이야기할 때 즐겁다.", w:[["trives","트리베스[강]","즐겁게 지내다"]] }
+  ]},
+  { id:"10", name:"덴마크어", native:"Dansk", tts:"da-DK", sents:[
+    { o:"Jeg står op klokken seks hver morgen.", p:"야이 스토르[강] 오프 클로켄[강] 섹스[강] 베르[강] 모르엔[강]", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["Jeg","야이","나는"],["står op","스토르[강] 오프","일어나다"]] },
+    { o:"Jeg laver morgenmad og drikker en kop kaffe.", p:"야이 라베르[강] 모르엔마[강] 오 드리케르[강] 엔 콥[강] 카페[강]", k:"나는 아침 식사를 만들고 커피 한 잔을 마신다.", w:[["morgenmad","모르엔마[강]","아침 식사"]] },
+    { o:"Jeg kører på arbejde i min bil.", p:"야이 쾨레르[강] 포 아르바이데[강] 이 민 빌[강]", k:"나는 내 차를 타고 일하러 간다.", w:[["bil","빌[강]","자동차"]] },
+    { o:"Mit arbejde starter klokken halv otte.", p:"미트 아르바이데[강] 스타르테르[강] 클로켄[강] 할 오테[강]", k:"내 일은 일곱 시 삼십 분에 시작한다.", w:[["halv otte","할 오테[강]","7시 30분"]] },
+    { o:"Jeg er kok på en restaurant.", p:"야이 에어 콕[강] 포 엔 레스토랑[강]", k:"나는 한 식당에서 요리사로 일한다.", w:[["kok","콕[강]","요리사"]] },
+    { o:"Jeg laver mad til sultne kunder.", p:"야이 라베르[강] 마드[강] 틸 술트네[강] 쿠네르[강]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["kunder","쿠네르[강]","손님들"]] },
+    { o:"Kunderne kommer fra mange forskellige lande.", p:"쿠네르네[강] 코메르[강] 프라 망에[강] 포르셀리게[강] 란데[강]", k:"손님들은 여러 다른 많은 나라에서 온다.", w:[["lande","란데[강]","나라들"]] },
+    { o:"De taler mange forskellige sprog.", p:"디 탈레르[강] 망에[강] 포르셀리게[강] 스프로[강]", k:"그들은 여러 다른 많은 언어를 말한다.", w:[["sprog","스프로[강]","언어들"]] },
+    { o:"Jeg kan møde mange flinke mennesker.", p:"야이 칸 뫼데[강] 망에[강] 플링케[강] 멘네스케르[강]", k:"나는 친절한 사람들을 많이 만날 수 있다.", w:[["flinke","플링케[강]","친절한"]] },
+    { o:"Jeg er glad når jeg taler med kunderne.", p:"야이 에어 글라드[강] 노르 야이 탈레르[강] 메드 쿠네르네[강]", k:"나는 손님들과 이야기할 때 행복하다.", w:[["glad","글라드[강]","행복한"]] }
+  ]},
+  { id:"11", name:"스웨덴어", native:"Svenska", tts:"sv-SE", sents:[
+    { o:"Jag vaknar klockan sex varje morgon.", p:"야그 바크나르[강] 클로칸[강] 섹스[강] 바리에[강] 모르온[강]", k:"나는 매일 아침 여섯 시에 잠에서 깬다.", w:[["Jag","야그","나는"],["vaknar","바크나르[강]","잠에서 깨다"]] },
+    { o:"Jag lagar frukost och dricker en kopp kaffe.", p:"야그 라가르[강] 프루코스트[강] 오크 드리케르[강] 엔 콥[강] 카페[강]", k:"나는 아침 식사를 만들고 커피 한 잔을 마신다.", w:[["frukost","프루코스트[강]","아침 식사"]] },
+    { o:"Jag kör till jobbet med min bil.", p:"야그 쇠르[강] 틸 요베트[강] 메드 민 빌[강]", k:"나는 내 차를 타고 직장으로 간다.", w:[["bil","빌[강]","자동차"]] },
+    { o:"Min arbetsdag börjar halv åtta.", p:"민 아르베츠다그[강] 뵈르야르[강] 할브 오타[강]", k:"내 근무일은 일곱 시 삼십 분에 시작된다.", w:[["halv åtta","할브 오타[강]","7시 30분"]] },
+    { o:"Jag jobbar som kock på en restaurang.", p:"야그 요바르[강] 솜 콕[강] 포 엔 레스토랑[강]", k:"나는 한 식당에서 요리사로 일한다.", w:[["kock","콕[강]","요리사"]] },
+    { o:"Jag lagar mat till hungriga kunder.", p:"야그 라가르[강] 마트[강] 틸 훙리가[강] 쿤데르[강]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["hungriga","훙리가[강]","배고픈"]] },
+    { o:"Kunderna kommer från många olika länder.", p:"쿤데르나[강] 코메르[강] 프론[강] 몽아[강] 올리카[강] 렌데르[강]", k:"손님들은 여러 다른 많은 나라에서 온다.", w:[["länder","렌데르[강]","나라들"]] },
+    { o:"De talar många olika språk.", p:"데 탈라르[강] 몽아[강] 올리카[강] 스프로크[강]", k:"그들은 여러 가지 다른 많은 언어를 말한다.", w:[["språk","스프로크[강]","언어들"]] },
+    { o:"Jag träffar många trevliga människor.", p:"야그 트레파르[강] 몽아[강] 트레블리가[강] 멘니스코르[강]", k:"나는 호감 가는 사람들을 많이 만난다.", w:[["trevliga","트레블리가[강]","친절한"]] },
+    { o:"Jag känner mig glad när jag pratar med kunderna.", p:"야그 켄네르 메이[강] 글라드[강] 네르[강] 야그 프라타르[강] 메드 쿤데르나[강]", k:"나는 손님들과 이야기할 때 기쁘다.", w:[["glad","글라드[강]","기쁜"]] }
+  ]},
+  { id:"12", name:"아이슬란드어", native:"Íslenska", tts:"is-IS", sents:[
+    { o:"(Mikael segir söguna)", p:"미카엘[강] 세이이르[강] 쇠귀나[강]", k:"(미카엘이 이야기를 들려줍니다)", w:[["segir","세이이르[강]","말하다"]] },
+    { o:"Ég vakna klukkan sex fyrir hádegi á hverjum morgni.", p:"예그 바크나[강] 클루칸[강] 섹스[강] 피리르 하우데이이[강] 아우 크베리움[강] 모르그니[강]", k:"나는 매일 아침 정오 전 여섯 시에 잠에서 깬다.", w:[["Ég","예그","나는"],["vakna","바크나[강]","잠에서 깨다"]] },
+    { o:"Ég bý til morgunmat og drekk kaffi.", p:"예그 비르 틸[강] 모르귄마트[강] 오 드레크[강] 카피[강]", k:"나는 아침 식사를 만들고 커피를 마신다.", w:[["morgunmat","모르귄마트[강]","아침 식사"]] },
+    { o:"Ég keyri í vinnuna á bílnum mínum.", p:"예그 케이리[강] 이 빈누나[강] 아우 비틀눔[강] 미눔", k:"나는 내 차를 타고 일하러 간다.", w:[["bílnum","비틀눔[강]","자동차"]] },
+    { o:"Vinnan mín byrjar á hverjum degi klukkan sjö þrjátíu fyrir hádegi.", p:"빈난[강] 민 비르야르[강] 아우 크베리움[강] 데이이[강] 클루칸[강] 시외[강] 트르야티우[강] 피리르 하우데이이[강]", k:"내 일은 매일 정오 전 일곱 시 삼십 분에 시작한다.", w:[["sjö þrjátíu","시외[강] 트르야티우[강]","7시 30분"]] },
+    { o:"Ég er kokkur á veitingastað.", p:"예그 에르 코쿠르[강] 아우 베이팅가스타드[강]", k:"나는 한 식당에서 요리사로 일한다.", w:[["kokkur","코쿠르[강]","요리사"]] },
+    { o:"Ég bý til mat fyrir svanga viðskiptavini.", p:"예그 비르 틸[강] 마트[강] 피리르 스방가[강] 비드스킵타비니[강]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["svanga","스방가[강]","배고픈"]] },
+    { o:"Viðskiptavinirnir eru frá mörgum löndum.", p:"비드스킵타비니르니르[강] 에뤼[강] 프라우 뫼르굼[강] 뢴둠[강]", k:"손님들은 많은 나라에서 온다.", w:[["löndum","뢴둠[강]","나라들"]] },
+    { o:"Þeir tala mörg mismunandi tungumál.", p:"페이르[강] 탈라[강] 뫼르그[강] 미스무난디[강] 퉁귀말[강]", k:"그들은 여러 가지 다른 언어를 말한다.", w:[["tungumál","퉁귀말[강]","언어들"]] },
+    { o:"Ég get hitt margt vinalegt fólk.", p:"예그 게트[강] 히트[강] 마르크트[강] 비날레크트[강] 포울크[강]", k:"나는 친절한 사람들을 많이 만날 수 있다.", w:[["vinalegt","비날레크트[강]","친절한"]] },
+    { o:"Ég er glaður þegar ég tala við viðskiptavinina.", p:"예그 에르 글라두르[강] 베가르 예그 탈라[강] 비드[강] 비드스킵타비니나[강]", k:"나는 손님들과 이야기할 때 기쁘다.", w:[["glaður","글라두르[강]","행복한"]] }
+  ]},
+  { id:"13", name:"폴란드어", native:"Polski", tts:"pl-PL", sents:[
+    { o:"To jest ta sama historia opowiedziana przez Michała.", p:"토 예스트 타 사마[강] 히스토리아[강] 오포비에지아나[강] 프셰스[강] 미하와[강]", k:"이것은 미할이 들려주는 같은 이야기입니다.", w:[["historia","히스토리아[강]","이야기"]] },
+    { o:"Codziennie wstaję o szóstej rano.", p:"초진녜[강] 프스타엥[강] 오 슈스테이[강] 라노[강]", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["wstaję","프스타엥[강]","나는 일어난다"]] },
+    { o:"Przygotowuję śniadanie i piję kawę.", p:"프시고토부옝[강] 시니아다녜[강] 이 피옝[강] 카벵[강]", k:"나는 아침 식사를 만들고 커피를 마신다.", w:[["śniadanie","시니아다녜[강]","아침 식사"]] },
+    { o:"Jadę do pracy swoim samochodem.", p:"야덩[강] 도 프라치[강] 스보임[강] 사모호뎀[강]", k:"나는 내 차를 타고 일하러 간다.", w:[["samochodem","사모호뎀[강]","자동차로"]] },
+    { o:"Zaczynam pracę o siódmej trzydzieści rano.", p:"자치남[강] 프라쳉[강] 오 시우드메이[강] 트시지에시치[강] 라노[강]", k:"나는 아침 일곱 시 삼십 분에 일을 시작한다.", w:[["Zaczynam","자치남[강]","시작하다"]] },
+    { o:"Pracuję jako szef kuchni.", p:"프라추엥[강] 야코 셰프[강] 쿠크니[강]", k:"나는 주방장으로 일한다.", w:[["szef kuchni","셰프[강] 쿠크니[강]","주방장"]] },
+    { o:"Przygotowuję jedzenie dla głodnych klientów.", p:"프시고토부엥[강] 예제녜[강] 들라 그워드니흐[강] 클리엔투프[강]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["głodnych","그워드니흐[강]","배고픈"]] },
+    { o:"Klienci odwiedzający restaurację pochodzą z różnych zakątków świata.", p:"클리엔치[강] 오드비에자용치[강] 레스타우라쳉[강] 포호동[강] 즈 루주니흐[강] 자콩투프[강] 시비아타[강]", k:"식당을 찾아오는 손님들은 세계 여러 곳에서 온다.", w:[["świata","시비아타[강]","세계의"]] },
+    { o:"Mówią oni wieloma obcymi językami.", p:"무비옹[강] 오니[강] 벨로마[강] 옵치미[강] 엥지카미[강]", k:"그들은 여러 가지 외국어로 말한다.", w:[["językami","엥지카미[강]","언어들로"]] },
+    { o:"Zawsze poznaję miłych ludzi.", p:"자프셰[강] 포즈나옝[강] 미위흐[강] 루지[강]", k:"나는 언제나 친절한 사람들을 만나 알게 된다.", w:[["miłych","미위흐[강]","친절한"]] },
+    { o:"Rozmowa z klientami przynosi mi wiele radości.", p:"로즈모바[강] 즈 클리엔타미[강] 프시노시[강] 미 비엘레[강] 라도시치[강]", k:"손님들과의 대화는 나에게 많은 기쁨을 준다.", w:[["radości","라도쉬치[강]","기쁨"]] }
+  ]},
+  { id:"14", name:"핀란드어", native:"Suomi", tts:"fi-FI", sents:[
+    { o:"Nousen ylös joka aamu kello kuudelta.", p:"노우센[강] 윌뢰스[강] 요카[강] 아무[강] 켈로[강] 쿠델타[강]", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["Nousen ylös","노우센[강] 윌뢰스[강]","나는 일어난다"]] },
+    { o:"Valmistan aamiaista ja juon kahvia.", p:"발미스탄[강] 아미아이스타[강] 야 유온[강] 카흐비아[강]", k:"나는 아침 식사를 만들고 커피를 마신다.", w:[["aamiaista","아미아이스타[강]","아침 식사"]] },
+    { o:"Ajan autollani töihin.", p:"아얀[강] 아우톨라니[강] 퇴이힌[강]", k:"나는 내 차를 타고 일하러 간다.", w:[["autollani","아우톨라니[강]","내 차로"]] },
+    { o:"Työni alkaa puoli kahdeksalta (7.30 am).", p:"퇴니[강] 알카[강] 푸올리[강] 카흐덱살타[강]", k:"내 일은 일곱 시 삼십 분에 시작한다.", w:[["puoli kahdeksalta","푸올리[강] 카흐덱살타[강]","7시 30분에"]] },
+    { o:"Olen kokki ravintolassa.", p:"올렌[강] 코키[강] 라빈톨라사[강]", k:"나는 식당에서 요리사로 일한다.", w:[["kokki","코키[강]","요리사"]] },
+    { o:"Valmistan ruokaa nälkäisille asiakkaille.", p:"발미스탄[강] 루오카[강] 낼캐이실레[강] 아시아카일레[강]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["nälkäisille","낼캐이실레[강]","배고픈"]] },
+    { o:"Asiakkaat tulevat monista eri maista.", p:"아시아카트[강] 툴레바트[강] 모니스타[강] 에리[강] 마이스타[강]", k:"손님들은 여러 다른 많은 나라에서 온다.", w:[["maista","마이스타[강]","나라들에서"]] },
+    { o:"He puhuvat monta eri kieltä.", p:"헤 푸후바트[강] 몬타[강] 에리[강] 키엘타[강]", k:"그들은 여러 다른 많은 언어를 말한다.", w:[["kieltä","키엘타[강]","언어들을"]] },
+    { o:"Voin tavata monta ystävällistä persoonaa.", p:"보인[강] 타바타[강] 몬타[강] 위스태벨리스타[강] 페르소나[강]", k:"나는 친절한 사람을 많이 만날 수 있다.", w:[["ystävällistä","위스태벨리스타[강]","친절한"]] },
+    { o:"Olen onnellinen, kun puhun asiakkaiden kanssa.", p:"올렌[강] 온넬리넨[강] 쿤 푸훈[강] 아시아카이덴[강] 칸사[강]", k:"나는 손님들과 이야기할 때 행복하다.", w:[["onnellinen","온넬리넨[강]","행복한"]] }
+  ]},
+  { id:"15", name:"아일랜드어", native:"Gaeilge", tts:"ga-IE", sents:[
+    { o:"Seo é an scéal céanna á insint ar bhealach difriúil.", p:"쇼 에이 언 스케알[강] 케아나[강] 아 인신트[강] 에르 발라흐[강] 디프루일[강]", k:"이것은 같은 이야기를 다른 방식으로 들려주는 것입니다.", w:[["scéal","스케알[강]","이야기"]] },
+    { o:"Éirím ag a sé a chlog gach maidin.", p:"에이림[강] 에그 어 셰이[강] 어 클로그[강] 가흐 마진[강]", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["Éirím","에이림[강]","나는 일어난다"]] },
+    { o:"Déanaim bricfeasta agus ólaim cupán caife.", p:"데아님[강] 브릭파스타[강] 아거스 올림[강] 쿠판[강] 카페[강]", k:"나는 아침 식사를 만들고 커피 한 잔을 마신다.", w:[["bricfeasta","브릭파스타[강]","아침 식사"]] },
+    { o:"Tiomáinim go dtí m'áit oibre i mo charr.", p:"티마님[강] 고 디[강] 마이트 이브레[강] 이 모 하르[강]", k:"나는 내 차를 타고 일터로 간다.", w:[["mo charr","모 하르[강]","내 차"]] },
+    { o:"Tosaím mo chuid oibre ag leathuair tar éis a seacht.", p:"토심[강] 모 후지드 이브레[강] 에그 라후어르[강] 타르 에이스 어 섹트[강]", k:"나는 일곱 시 삼십 분에 내 일을 시작한다.", w:[["leathuair tar éis a seacht","라후어르[강] 타르 에이스 어 섹트[강]","7시 30분"]] },
+    { o:"Is cócaire mé i mbialann.", p:"이스 코커레[강] 메이[강] 이 미얼런[강]", k:"나는 한 식당에서 요리사다.", w:[["cócaire","코커레[강]","요리사"]] },
+    { o:"Déanaim bia do chustaiméirí ocracha.", p:"데아님[강] 비아[강] 도 후스타메이리[강] 오크라하[강]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["ocracha","오크라하[강]","배고픈"]] },
+    { o:"Is as go leor tíortha éagsúla na custaiméirí.", p:"이스 아스[강] 고 레오르[강] 티어르하[강] 에이그술라[강] 나 쿠스타메이리[강]", k:"손님들은 여러 다른 많은 나라 출신이다.", w:[["tíortha","티어르하[강]","나라들"]] },
+    { o:"Labhraíonn siad go leor teangacha éagsúla.", p:"라우리언[강] 시어드 고 레오르[강] 탕가하[강] 에이그술라[강]", k:"그들은 여러 가지 다른 많은 언어를 말한다.", w:[["teangacha","탕가하[강]","언어들"]] },
+    { o:"Is féidir liom bualadh le go leor daoine cairdiúla.", p:"이스 페이디르[강] 림[강] 부알라 레 고 레오르[강] 디네[강] 카르디울라[강]", k:"나는 친절한 사람들을 많이 만날 수 있다.", w:[["cairdiúla","카르디울라[강]","친절한"]] },
+    { o:"Bíonn áthas orm nuair a labhraím leis na custaiméirí.", p:"비언[강] 아하스[강] 오름[강] 누어르 어 라우림[강] 레스 나 후스타메이리[강]", k:"나는 손님들과 이야기할 때 기쁘다.", w:[["áthas","아하스[강]","기쁨"]] }
+  ]},
+  { id:"16", name:"고전 라틴어", native:"Latina", tts:"la", sents:[
+    { o:"Haec est eadem fabula ā Michāēle nārrāta.", p:"하이크 에스트 에아뎀 파[장]불라 아[장] 미카[장]엘레 나[장]라[장]타", k:"이것은 미카엘이 들려주는 같은 이야기입니다.", w:[["fabula","파[장]불라","이야기"]] },
+    { o:"Cotīdiē, sextā hōrā māne surgō.", p:"코티[장]디에[장] 섹스타[장] 호[장]라[장] 마[장]네 수르고[장]", k:"나는 날마다 아침 여섯 시에 일어난다.", w:[["surgō","수르고[장]","나는 일어난다"]] },
+    { o:"Ientāculum parō et caffeam bibō.", p:"이엔타[장]쿨룸 파로[장] 에트 카페암[강] 비보[장]", k:"나는 아침 식사를 만들고 커피를 마신다.", w:[["Ientāculum","이엔타[장]쿨룸","아침 식사"]] },
+    { o:"Ad sēdem mūneris raedā vehor.", p:"아드 세[장]뎀 무[장]네리스 라이다[장] 웨호르", k:"나는 차를 타고 일할 자리로 간다.", w:[["raedā","라이다[장]","수레·차로"]] },
+    { o:"Mūnus septimā hōrā et dīmidiā incipit.", p:"무[장]누스 셉티마[장] 호[장]라[장] 에트 디미디아[장] 인키피트", k:"내 일은 일곱 시 삼십 분에 시작된다.", w:[["incipit","인키피트","시작되다"]] },
+    { o:"Egō sum coquus caupōnae.", p:"에고[장] 숨 코쿠스 카우포[장]나이", k:"나는 식당의 요리사다.", w:[["coquus","코쿠스","요리사"]] },
+    { o:"Cibum adventōribus ēsurientibus parō.", p:"키붐 아드웬토[장]리부스 에[장]수리엔티부스 파로[장]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["ēsurientibus","에[장]수리엔티부스","배고픈"]] },
+    { o:"Adventōrēs ē multīs et variīs patriīs orīginem dūcunt.", p:"아드웬토[장]레[장]스 에[장] 물티[장]스 에트 와리[장]이스 파트리[장]이스 오리[장]기넴 두[장]쿤트", k:"손님들은 여러 다른 많은 고향에서 왔다.", w:[["patriīs","파트리[장]이스","고향들"]] },
+    { o:"Multīs et variīs linguīs loquuntur.", p:"물티[장]스 에트 와리[장]이스 링구이[장]스 로쿤투르", k:"그들은 여러 가지 다른 많은 언어로 말한다.", w:[["linguīs","링구이[장]스","언어들로"]] },
+    { o:"Multīs amīcīs hominibus occurrere possum.", p:"물티[장]스 아미[장]키[장]스 호미니부스 오쿠레레[강] 포숨", k:"나는 친절한 사람들을 많이 만날 수 있다.", w:[["amīcīs","아미[장]키[장]스","친절한"]] },
+    { o:"Cum adventōribus colloquēns, laetus sum.", p:"쿰 아드웬토[장]리부스 콜로퀜스[강] 라이투스 숨", k:"손님들과 이야기할 때 나는 행복하다.", w:[["laetus","라이투스","행복한"]] }
+  ]},
+  { id:"17", name:"아프리칸스어", native:"Afrikaans", tts:"af-ZA", sents:[
+    { o:"Hier dieselfde storie vertel op 'n ander manier.", p:"히어 디셀프데[강] 스토리[강] 페르텔[강] 업 어 안데르[강] 마니르[강]", k:"여기 같은 이야기를 다른 방식으로 들려드립니다.", w:[["storie","스토리[강]","이야기"]] },
+    { o:"Ek staan elke oggend ses uur op.", p:"엑 스탄[강] 엘케[강] 오헌트[강] 세스[강] 위어[강] 업", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["Ek staan ... op","엑 스탄[강] 업","나는 일어난다"]] },
+    { o:"Ek maak ontbyt en drink 'n koppie koffie.", p:"엑 마크[강] 온트베이트[강] 엔 드링크[강] 어 코피[강] 코피[강]", k:"나는 아침 식사를 만들고 커피 한 잔을 마신다.", w:[["ontbyt","온트베이트[강]","아침 식사"]] },
+    { o:"Ek ry werk toe in my kar.", p:"엑 레이[강] 베르크[강] 투 인 메이 카르[강]", k:"나는 내 차를 타고 일하러 간다.", w:[["kar","카르[강]","자동차"]] },
+    { o:"My werk begin half-agt.", p:"메이 베르크[강] 베힌[강] 할프 아흐트[강]", k:"내 일은 일곱 시 삼십 분에 시작한다.", w:[["half-agt","할프 아흐트[강]","7시 30분"]] },
+    { o:"Ek is 'n kok by 'n restaurant.", p:"엑 이스 어 콕[강] 베이 어 레스토란트[강]", k:"나는 한 식당에서 요리사로 일한다.", w:[["kok","콕[강]","요리사"]] },
+    { o:"Ek maak kos vir honger klante.", p:"엑 마크[강] 코스[강] 피르 홍어[강] 클란테[강]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["honger","홍어[강]","배고픈"]] },
+    { o:"Die klante kom van regoor die wêreld heen.", p:"디 클란테[강] 콤 판 레호르[강] 디 베렐트[강] 헤인", k:"손님들은 전 세계 각지에서 온다.", w:[["wêreld","베렐트[강]","세계"]] },
+    { o:"Hulle praat allerhande tale.", p:"홀레 프라트[강] 알러한데[강] 탈레[강]", k:"그들은 갖가지 언어를 말한다.", w:[["tale","탈레[강]","언어들"]] },
+    { o:"Ek kan baie vriendelike mense ontmoet.", p:"엑 칸 바이에[강] 프린델리케[강] 멘세[강] 온트무트[강]", k:"나는 친절한 사람들을 많이 만날 수 있다.", w:[["vriendelike","프린델리케[강]","친절한"]] },
+    { o:"Ek is gelukkig wanneer ek met die klante gesels.", p:"엑 이스 헐뤼키흐[강] 바네어[강] 엑 메트 디 클란테[강] 헤셀스[강]", k:"나는 손님들과 이야기할 때 행복하다.", w:[["gelukkig","헐뤼키흐[강]","행복한"]] }
+  ]},
+  { id:"18", name:"중국어 보통화", native:"普通话", tts:"zh-CN", sents:[
+    { o:"用不同的方式讲述同一个故事", p:"용[내림] 뿌[내림] 통[올림] 더[경성] 팡[높평] 스[내림] 지앙[낮꺾] 슈[내림] 통[올림] 이[내림] 거[경성] 꾸[내림] 스[경성]", k:"같은 이야기를 다른 방식으로 들려줍니다.", w:[["故事","꾸[내림] 스[경성]","이야기"]] },
+    { o:"我每天早晨六点起床。", p:"워[낮꺾] 메이[낮꺾] 티엔[높평] 짜오[낮꺾] 천[올림] 리우[내림] 디엔[낮꺾] 치[낮꺾] 촹[올림]", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["我","워[낮꺾]","나"],["起床","치[낮꺾] 촹[올림]","일어나다"]] },
+    { o:"我先做早饭并喝一杯咖啡。", p:"워[낮꺾] 시엔[높평] 쭈오[내림] 짜오[낮꺾] 판[내림] 삥[내림] 허[높평] 이[내림] 베이[높평] 카[높평] 페이[높평]", k:"나는 먼저 아침 식사를 만들고 커피 한 잔을 마신다.", w:[["早饭","짜오[낮꺾] 판[내림]","아침 식사"]] },
+    { o:"接着开车去上班。", p:"지에[높평] 저[경성] 카이[높평] 처[높평] 취[내림] 상[내림] 반[높평]", k:"이어서 차를 몰고 출근한다.", w:[["开车","카이[높평] 처[높평]","운전하다"]] },
+    { o:"我每天早上七点半开始工作。", p:"워[낮꺾] 메이[낮꺾] 티엔[높평] 짜오[낮꺾] 상[경성] 치[높평] 디엔[낮꺾] 반[내림] 카이[높평] 스[낮꺾] 궁[높평] 쭈오[내림]", k:"나는 매일 아침 일곱 시 삼십 분에 일을 시작한다.", w:[["七点半","치[높평] 디엔[낮꺾] 반[내림]","7시 30분"]] },
+    { o:"我在一家餐厅当厨师。", p:"워[낮꺾] 짜이[내림] 이[내림] 지아[높평] 찬[높평] 팅[높평] 당[높평] 추[올림] 스[높평]", k:"나는 한 식당에서 요리사로 일한다.", w:[["厨师","추[올림] 스[높평]","요리사"]] },
+    { o:"我为肚子饿的顾客做饭。", p:"워[낮꺾] 웨이[내림] 두[내림] 쯔[경성] 어[내림] 더[경성] 꾸[내림] 커[내림] 쭈오[내림] 판[내림]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["肚子饿","두[내림] 쯔[경성] 어[내림]","배고프다"]] },
+    { o:"这些顾客来自很多不同的国家。", p:"쩌[내림] 시에[높평] 꾸[내림] 커[내림] 라이[올림] 쯔[내림] 헌[낮꺾] 뚜오[높평] 뿌[내림] 통[올림] 더[경성] 궈[올림] 지아[높평]", k:"이 손님들은 여러 다른 많은 나라에서 온다.", w:[["国家","궈[올림] 지아[높평]","나라"]] },
+    { o:"他们说着不同的语言。", p:"타[높평] 먼[경성] 슈오[높평] 저[경성] 뿌[내림] 통[올림] 더[경성] 위[낮꺾] 옌[올림]", k:"그들은 서로 다른 언어를 말하고 있다.", w:[["语言","위[낮꺾] 옌[올림]","언어"]] },
+    { o:"我可以遇到很多友好的人。", p:"워[낮꺾] 커[낮꺾] 이[낮꺾] 위[내림] 따오[내림] 헌[낮꺾] 뚜오[높평] 요우[낮꺾] 하오[낮꺾] 더[경성] 런[올림]", k:"나는 친절한 사람들을 많이 만날 수 있다.", w:[["友好","요우[낮꺾] 하오[낮꺾]","친절한"]] },
+    { o:"与这些顾客聊天，我感到很愉快。", p:"위[낮꺾] 쩌[내림] 시에[높평] 꾸[내림] 커[내림] 리아오[올림] 티엔[높평] 워[낮꺾] 간[낮꺾] 따오[내림] 헌[낮꺾] 위[올림] 콰이[내림]", k:"이 손님들과 이야기하면 나는 매우 즐겁다.", w:[["愉快","위[올림] 콰이[내림]","즐겁다"]] }
+  ]},
+  { id:"19", name:"광둥어", native:"粵語", tts:"zh-HK", sents:[
+    { o:"我每日朝早六點起身。", p:"응오[낮상] 무이[낮상] 얏[낮내] 지우[높평] 조우[높상] 룩[낮평] 딤[높상] 헤이[높상] 산[높평]", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["我","응오[낮상]","나"],["起身","헤이[높상] 산[높평]","일어나다"]] },
+    { o:"我先做早餐然後飲一杯咖啡。", p:"응오[낮상] 신[높평] 조우[낮평] 조우[높상] 찬[높평] 인[낮내] 나우[낮평] 얌[높상] 얏[높평] 부이[높평] 가[중평] 페[높평]", k:"나는 먼저 아침 식사를 만들고 커피 한 잔을 마신다.", w:[["早餐","조우[높상] 찬[높평]","아침 식사"]] },
+    { o:"我揸車去返工。", p:"응오[낮상] 자[높평] 체[높평] 허이[중평] 판[높평] 궁[높평]", k:"나는 차를 몰고 출근한다.", w:[["揸車","자[높평] 체[높평]","운전하다"]] },
+    { o:"我朝早七點半開始做嘢。", p:"응오[낮상] 지우[높평] 조우[높상] 찻[높평] 딤[높상] 분[중평] 호이[높평] 치[높상] 조우[낮평] 예[낮상]", k:"나는 아침 일곱 시 삼십 분에 일을 시작한다.", w:[["七點半","찻[높평] 딤[높상] 분[중평]","7시 30분"]] },
+    { o:"我喺一間餐廳做廚師。", p:"응오[낮상] 하이[높상] 얏[높평] 간[높평] 찬[높평] 텡[높평] 조우[낮평] 취[낮내] 시[높평]", k:"나는 한 식당에서 요리사로 일한다.", w:[["廚師","취[낮내] 시[높평]","요리사"]] },
+    { o:"我為肚餓嘅顧客煮嘢食。", p:"응오[낮상] 와이[낮평] 토우[낮상] 응오[낮평] 게[중평] 구[중평] 학[중평] 쥐[높상] 예[낮상] 식[낮평]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["肚餓","토우[낮상] 응오[낮평]","배고프다"]] },
+    { o:"呢啲顧客嚟自好多國家。", p:"니[높평] 디[높평] 구[중평] 학[중평] 레이[낮내] 지[낮평] 호우[높상] 도[높평] 궉[중평] 가[높평]", k:"이 손님들은 많은 나라에서 온다.", w:[["國家","궉[중평] 가[높평]","나라"]] },
+    { o:"佢哋講唔同嘅語言。", p:"커이[낮상] 데이[낮평] 공[높상] 음[낮내] 통[낮내] 게[중평] 위[낮상] 인[낮내]", k:"그들은 서로 다른 언어를 말한다.", w:[["語言","위[낮상] 인[낮내]","언어"]] },
+    { o:"我可以遇到好多好好嘅人。", p:"응오[낮상] 호[높상] 이[낮상] 위[낮평] 도우[중평] 호우[높상] 도[높평] 호우[높상] 호우[높상] 게[중평] 인[낮내]", k:"나는 아주 좋은 사람들을 많이 만날 수 있다.", w:[["好好","호우[높상] 호우[높상]","아주 좋은"]] },
+    { o:"同呢啲顧客傾偈，我覺得好開心。", p:"통[낮내] 니[높평] 디[높평] 구[중평] 학[중평] 킹[높평] 가이[낮평] 응오[낮상] 곡[중평] 닥[높평] 호우[높상] 호이[높평] 샘[높평]", k:"이 손님들과 이야기하면 나는 매우 기쁘다.", w:[["開心","호이[높평] 샘[높평]","기쁘다"]] }
+  ]},
+  { id:"20", name:"스코츠 (Scots)", native:"Scots Lallans", tts:"en-GB", ttsNote:"영국식 영어 성우로 근사 재생", sents:[
+    { o:"Here is the same story tellt in anither wey.", p:"히어 이스 더 세임[강] 스토리[강] 텔트[강] 인 어니더[강] 웨이[강]", k:"여기 같은 이야기를 다른 방식으로 들려드립니다.", w:[["tellt","텔트[강]","들려주다"],["anither wey","어니더[강] 웨이[강]","다른 방식"]] },
+    { o:"A get up at sax o'clock ilka mornin.", p:"아 겟업 앳 삭스[강] 어클록 일카[강] 모닌[강]", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["A","아","나는"],["sax","삭스[강]","여섯"],["ilka","일카[강]","매~마다"]] },
+    { o:"A mak ma breakfast an drink a cup o coffee.", p:"아 마크[강] 마 브렉퍼스트[강] 언 드링크[강] 어 컵[강] 오 코피[강]", k:"나는 내 아침 식사를 만들고 커피 한 잔을 마신다.", w:[["mak","마크[강]","만들다"],["ma","마","나의"]] },
+    { o:"A drive tae wark in ma caur.", p:"아 드라이브[강] 태 와르크[강] 인 마 카르[강]", k:"나는 내 차를 타고 일하러 간다.", w:[["wark","와르크[강]","일"],["caur","카르[강]","자동차"]] },
+    { o:"Ma wark sterts at hauf past seeven.", p:"마 와르크[강] 스테르츠[강] 앳 하프 파스트 시번[강]", k:"내 일은 일곱 시 삼십 분에 시작한다.", w:[["hauf past seeven","하프 파스트 시번[강]","7시 30분"]] },
+    { o:"A am a cook at a restaurant.", p:"아 암 어 쿡[강] 앳 어 레스토랑[강]", k:"나는 식당에서 요리사로 일한다.", w:[["cook","쿡[강]","요리사"]] },
+    { o:"A mak food for hungert customers.", p:"아 마크[강] 푸드[강] 포 헝거트[강] 커스터머스[강]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["hungert","헝거트[강]","배고픈"]] },
+    { o:"The customers come frae mony kintras.", p:"더 커스터머스[강] 컴[강] 프래 모니[강] 킨트라스[강]", k:"손님들은 많은 나라에서 온다.", w:[["kintras","킨트라스[강]","나라들"]] },
+    { o:"They speak mony different leids.", p:"데이 스피크[강] 모니[강] 디퍼런트[강] 리즈[강]", k:"그들은 여러 가지 다른 많은 언어를 말한다.", w:[["leids","리즈[강]","언어들"]] },
+    { o:"A can meet mony freendly fowk.", p:"아 캔 미트[강] 모니[강] 프린들리[강] 포크[강]", k:"나는 친절한 사람들을 많이 만날 수 있다.", w:[["fowk","포크[강]","사람들"]] },
+    { o:"A am blythe whan A speak tae ma customers.", p:"아 암 블라이드[강] 환 아 스피크[강] 태 마 커스터머스[강]", k:"나는 손님들과 이야기할 때 행복하다.", w:[["blythe","블라이드[강]","행복한"]] }
+  ]},
+  { id:"21", name:"스코틀랜드 게일어", native:"Gàidhlig", tts:"gd-GB", sents:[
+    { o:"Seo an aon sgeulachd air a h-innse ann an dòigh eile.", p:"쇼 언 온[강] 스키얼라흐크[강] 에르 어 힌셰[강] 안 언 도이[강] 엘레[강]", k:"여기 같은 이야기를 다른 방식으로 들려드립니다.", w:[["sgeulachd","스키얼라흐크[강]","이야기"],["dòigh eile","도이[강] 엘레[강]","다른 방식"]] },
+    { o:"Bidh mi ag èirigh aig sia uairean gach madainn.", p:"비 미 에그 에이리[강] 에그 시어[강] 우어란[강] 가흐 마딘[강]", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["ag èirigh","에그 에이리[강]","일어나다"],["madainn","마딘[강]","아침"]] },
+    { o:"Bidh mi a' dèanamh bracaist agus ag òl cupa cofaidh.", p:"비 미 어 지어누[강] 브라카시트[강] 아거스 에그 올[강] 쿠파[강] 코피[강]", k:"나는 아침 식사를 만들고 커피 한 잔을 마신다.", w:[["bracaist","브라카시트[강]","아침 식사"],["cofaidh","코피[강]","커피"]] },
+    { o:"Bidh mi a' dràibheadh dhan obair nam chàr.", p:"비 미 어 드라이비[강] 간 오바르[강] 남 하르[강]", k:"나는 내 차를 타고 일하러 간다.", w:[["obair","오바르[강]","직장"],["chàr","하르[강]","자동차"]] },
+    { o:"Bidh m' obair a' tòiseachadh aig leth-uair an dèidh seachd.", p:"비 모바르[강] 어 토샤하흐[강] 에그 레후어르[강] 언 제이[강] 샤흐크[강]", k:"내 일은 일곱 시 삼십 분에 시작한다.", w:[["leth-uair an dèidh seachd","레후어르[강] 언 제이[강] 샤흐크[강]","7시 30분"]] },
+    { o:"Is e còcaire a th' annam ann an taigh-bìdh.", p:"이셰 코커레[강] 어 하남[강] 안 언 타이 비[강]", k:"나는 한 식당에서 요리사로 일한다.", w:[["còcaire","코커레[강]","요리사"],["taigh-bìdh","타이 비[강]","식당"]] },
+    { o:"Bidh mi a' dèanamh biadh do luchd-ceannach acrach.", p:"비 미 어 지어누[강] 비어흐[강] 도 루흐크 캬나흐[강] 아크라흐[강]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["acrach","아크라흐[강]","배고픈"]] },
+    { o:"Tha an luchd-ceannach a' tighinn à iomadh dùthaich.", p:"하 언 루흐크 캬나흐[강] 어 티인[강] 아 이마흐[강] 두히[강]", k:"손님들은 많은 나라에서 온다.", w:[["dùthaich","두히[강]","나라"]] },
+    { o:"Tha iad a' bruidhinn iomadh cànan eadar-dhealaichte.", p:"하 이어드 어 브루인[강] 이마흐[강] 카난[강] 에다르 얄라흐체[강]", k:"그들은 여러 가지 다른 많은 언어를 말한다.", w:[["cànan","카난[강]","언어"]] },
+    { o:"Is urrainn dhomh coinneachadh ri mòran dhaoine càirdeil.", p:"이스 우린[강] 곰 코냐하흐[강] 리 모란[강] 기네[강] 카르질[강]", k:"나는 친절한 사람들을 많이 만날 수 있다.", w:[["càirdeil","카르질[강]","친절한"]] },
+    { o:"Tha mi toilichte nuair a bhios mi a' bruidhinn ris an luchd-ceannach.", p:"하 미 톨리흐체[강] 누어르 어 비스[강] 미 어 브루인[강] 리스 언 루흐크 캬나흐[강]", k:"나는 손님들과 이야기할 때 행복하다.", w:[["toilichte","톨리흐체[강]","행복한"]] }
+  ]},
+  { id:"22", name:"셔틀랜드어", native:"Shetlandic", tts:"en-GB", ttsNote:"영국식 영어 성우로 근사 재생", sents:[
+    { o:"Here is da sam story telt in anidder wye.", p:"히어 이즈 다 삼[강] 스토리[강] 텔트[강] 인 어니더[강] 와이[강]", k:"여기 같은 이야기를 다른 방식으로 들려드립니다.", w:[["da sam","다 삼[강]","같은"],["anidder wye","어니더[강] 와이[강]","다른 방식"]] },
+    { o:"A get up at sax o'clock ilka mornin.", p:"아 겟업 앳 삭스[강] 어클록 일카[강] 모닌[강]", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["A","아","나는"],["ilka mornin","일카[강] 모닌[강]","매일 아침"]] },
+    { o:"A mak me brakfast an drink a cup o coffee.", p:"아 마크[강] 미 브락퍼스트[강] 언 드링크[강] 어 컵[강] 오 코피[강]", k:"나는 내 아침 식사를 만들고 커피 한 잔을 마신다.", w:[["me brakfast","미 브락퍼스트[강]","내 아침 식사"]] },
+    { o:"A drive tae wark in me caur.", p:"아 드라이브[강] 태 와르크[강] 인 미 카르[강]", k:"나는 내 차를 타고 일하러 간다.", w:[["me caur","미 카르[강]","내 차"]] },
+    { o:"Me wark sterts at haaf past seeven.", p:"미 와르크[강] 스테르츠[강] 앳 하프 파스트 시번[강]", k:"내 일은 일곱 시 삼십 분에 시작한다.", w:[["haaf past seeven","하프 파스트 시번[강]","7시 30분"]] },
+    { o:"A'm a cook at a restaurant.", p:"아임 어 쿡[강] 앳 어 레스토랑[강]", k:"나는 식당에서 요리사로 일한다.", w:[["A'm","아임","나는 ~이다"]] },
+    { o:"A mak maet fir hungert customers.", p:"아 마크[강] 매트[강] 피르 헝거트[강] 커스터머스[강]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["maet","매트[강]","음식(meat)"]] },
+    { o:"Da customers come fae mony kintras.", p:"다 커스터머스[강] 컴[강] 패 모니[강] 킨트라스[강]", k:"손님들은 많은 나라에서 온다.", w:[["fae","패","~에서(from)"]] },
+    { o:"Dey speak mony different leids.", p:"데이 스피크[강] 모니[강] 디퍼런트[강] 리즈[강]", k:"그들은 여러 가지 다른 많은 언어를 말한다.", w:[["Dey","데이","그들은"],["leids","리즈[강]","언어들"]] },
+    { o:"A can meet mony freendly fowk.", p:"아 캔 미트[강] 모니[강] 프린들리[강] 포크[강]", k:"나는 친절한 사람들을 많이 만날 수 있다.", w:[["fowk","포크[강]","사람들"]] },
+    { o:"A'm blythe whin A spik tae me customers.", p:"아임 블라이드[강] 휜 아 스픽[강] 태 미 커스터머스[강]", k:"나는 손님들과 이야기할 때 행복하다.", w:[["blythe","블라이드[강]","행복한"]] }
+  ]},
+  { id:"23", name:"오크니 스코츠", native:"Orkney Scots", tts:"en-GB", ttsNote:"영국식 영어 성우로 근사 재생", sents:[
+    { o:"Here is the sam story telt in anither wey.", p:"히어 이즈 더 삼[강] 스토리[강] 텔트[강] 인 어니더[강] 웨이[강]", k:"여기 같은 이야기를 다른 방식으로 들려드립니다.", w:[["sam","삼[강]","같은"]] },
+    { o:"A get up at sax o'clock ilka mornin.", p:"아 겟업 앳 삭스[강] 어클록 일카[강] 모닌[강]", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["sax","삭스[강]","여섯"]] },
+    { o:"A mak me brakfast an drink a cup o coffee.", p:"아 마크[강] 미 브락퍼스트[강] 언 드링크[강] 어 컵[강] 오 코피[강]", k:"나는 내 아침 식사를 만들고 커피 한 잔을 마신다.", w:[["brakfast","브락퍼스트[강]","아침 식사"]] },
+    { o:"A drive tae wark in me caur.", p:"아 드라이브[강] 태 와르크[강] 인 미 카르[강]", k:"나는 내 차를 타고 일하러 간다.", w:[["wark","와르크[강]","일"]] },
+    { o:"Me wark sterts at hauf past seeven.", p:"미 와르크[강] 스테르츠[강] 앳 하프 파스트 시번[강]", k:"내 일은 일곱 시 삼십 분에 시작한다.", w:[["hauf past seeven","하프 파스트 시번[강]","7시 30분"]] },
+    { o:"A'm a cook at a restaurant.", p:"아임 어 쿡[강] 앳 어 레스토랑[강]", k:"나는 식당에서 요리사로 일한다.", w:[["cook","쿡[강]","요리사"]] },
+    { o:"A mak maet for hungert customers.", p:"아 마크[강] 매트[강] 포 헝거트[강] 커스터머스[강]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["maet","매트[강]","음식"]] },
+    { o:"The customers come fae mony kintras.", p:"더 커스터머스[강] 컴[강] 패 모니[강] 킨트라스[강]", k:"손님들은 많은 나라에서 온다.", w:[["kintras","킨트라스[강]","나라들"]] },
+    { o:"They speak mony different leids.", p:"데이 스피크[강] 모니[강] 디퍼런트[강] 리즈[강]", k:"그들은 여러 가지 다른 많은 언어를 말한다.", w:[["leids","리즈[강]","언어들"]] },
+    { o:"A can meet mony freendly folk.", p:"아 캔 미트[강] 모니[강] 프린들리[강] 포크[강]", k:"나는 친절한 사람들을 많이 만날 수 있다.", w:[["folk","포크[강]","사람들"]] },
+    { o:"A'm blythe whan A speak tae me customers.", p:"아임 블라이드[강] 환 아 스피크[강] 태 미 커스터머스[강]", k:"나는 손님들과 이야기할 때 행복하다.", w:[["blythe","블라이드[강]","행복한"]] }
+  ]},
+  { id:"24", name:"러시아어", native:"Русский", tts:"ru-RU", sents:[
+    { o:"Теперь та же история, рассказанная от другого лица.", p:"테페리[강] 타 제 이스토리야[강] 라스카잔나야[강] 아트 드루고바[강] 리차[강]", k:"이제 같은 이야기를 다른 사람의 입장에서 들려줍니다.", w:[["история","이스토리야[강]","이야기"]] },
+    { o:"Я встаю в шесть часов каждое утро.", p:"야 프스타유[강] 브 셰스티[강] 차소프[강] 카주다예[강] 우트라[강]", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["Я встаю","야 프스타유[강]","나는 일어난다"]] },
+    { o:"Я делаю завтрак и пью кофе.", p:"야 델라유[강] 자프트라크[강] 이 피유[강] 코페[강]", k:"나는 아침 식사를 만들고 커피를 마신다.", w:[["завтрак","자프트라크[강]","아침 식사"]] },
+    { o:"Я еду на работу на своём автомобиле.", p:"야 예두[강] 나 라보투[강] 나 스바욤[강] 아프타마빌레[강]", k:"나는 내 차를 타고 일하러 간다.", w:[["автомобиле","아프타마빌레[강]","자동차로"]] },
+    { o:"Моя работа начинается в семь тридцать утра.", p:"마야[강] 라보타[강] 나치나예차[강] 브 셈[강] 트리차티[강] 우트라[강]", k:"내 일은 아침 일곱 시 삼십 분에 시작된다.", w:[["семь тридцать","셈[강] 트리차티[강]","7시 30분"]] },
+    { o:"Я работаю поваром в ресторане.", p:"야 라보타유[강] 포바람[강] 브 레스토라녜[강]", k:"나는 한 식당에서 요리사로 일한다.", w:[["поваром","포바람[강]","요리사로"]] },
+    { o:"Я готовлю пищу для голодных посетителей.", p:"야 가토블류[강] 피슈[강] 들랴 골라드니흐[강] 파세티텔레이[강]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["голодных","골라드니흐[강]","배고픈"]] },
+    { o:"Клиенты из разных стран.", p:"클리엔티[강] 이즈 라즈니흐[강] 스트란[강]", k:"손님들은 여러 나라에서 온다.", w:[["стран","스트란[강]","나라들"]] },
+    { o:"Они говорят на самых разных языках.", p:"아니 가바랴트[강] 나 사미흐[강] 라즈니흐[강] 이지카흐[강]", k:"그들은 아주 여러 가지 다른 언어로 말한다.", w:[["языках","이지카흐[강]","언어들로"]] },
+    { o:"У меня есть возможность встретить много дружелюбных людей.", p:"우 미냐[강] 예스티 바즈모즈나스티[강] 프스트레티티[강] 므노거[강] 드루지류브니흐[강] 류데이[강]", k:"나에게는 친절한 사람들을 많이 만날 기회가 있다.", w:[["дружелюбных","드루지류브니흐[강]","친절한"]] },
+    { o:"Я счастлив, когда я разговариваю с посетителями.", p:"야 시차슬리프[강] 카그다[강] 야 라즈가바리바유[강] 스 파세티텔라미[강]", k:"나는 손님들과 이야기할 때 행복하다.", w:[["счастлив","시차슬리프[강]","행복한"]] }
+  ]},
+  { id:"25", name:"우크라이나어", native:"Українська", tts:"uk-UA", sents:[
+    { o:"Я щоранку прокидаюся о шостій годині.", p:"야 쇼란쿠[강] 프로키다유샤[강] 오 쇼스티이[강] 호디니[강]", k:"나는 매일 아침 여섯 시에 잠에서 깬다.", w:[["прокидаюся","프로키다유샤[강]","잠에서 깬다"]] },
+    { o:"Я готую сніданок і п'ю каву.", p:"야 호투유[강] 스니다녹[강] 이 피유[강] 카부[강]", k:"나는 아침 식사를 만들고 커피를 마신다.", w:[["сніданок","스니다녹[강]","아침 식사"]] },
+    { o:"Я їду на роботу на своєму автомобілі.", p:"야 이두[강] 나 로보투[강] 나 스보예무[강] 아프토모빌리[강]", k:"나는 내 차를 타고 일하러 간다.", w:[["автомобілі","아프토모빌리[강]","자동차로"]] },
+    { o:"Я починаю працювати о пів на восьму ранку.", p:"야 포치나유[강] 프라추바티[강] 오 피우 나 보스무[강] 란쿠[강]", k:"나는 아침 일곱 시 삼십 분에 일을 시작한다.", w:[["пів на восьму","피우 나 보스무[강]","7시 30분"]] },
+    { o:"Я працюю кухарем у ресторані.", p:"야 프라추유[강] 쿠하렘[강] 우 레스토라니[강]", k:"나는 한 식당에서 요리사로 일한다.", w:[["кухарем","쿠하렘[강]","요리사로"]] },
+    { o:"Я готую їжу для голодних відвідувачів, клієнтів.", p:"야 호투유[강] 이주[강] 들랴 홀로드니흐[강] 비드비두바치우[강] 클리엔티우[강]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["голодних","홀로드니흐[강]","배고픈"]] },
+    { o:"Клієнти з різних країн.", p:"클리엔티[강] 즈 리즈니흐[강] 크라인[강]", k:"손님들은 여러 나라에서 온다.", w:[["країн","크라인[강]","나라들"]] },
+    { o:"Вони говорять різними мовами.", p:"보니 호보랴티[강] 리즈니미[강] 모바미[강]", k:"그들은 여러 가지 다른 언어로 말한다.", w:[["мовами","모바미[강]","언어들로"]] },
+    { o:"Я можу зустріти багато приязних людей.", p:"야 모주[강] 주스트리티[강] 바하토[강] 프리야즈니흐[강] 류데이[강]", k:"나는 상냥한 사람들을 많이 만날 수 있다.", w:[["приязних","프리야즈니흐[강]","친절한"]] },
+    { o:"Я радію, коли розмовляю з клієнтами.", p:"야 라디유[강] 콜리[강] 로즈모울라유[강] 즈 클리옌타미[강]", k:"나는 손님들과 이야기할 때 기뻐한다.", w:[["радію","라디유[강]","기뻐한다"]] }
+  ]},
+  { id:"26", name:"그리스어", native:"Ελληνικά", tts:"el-GR", sents:[
+    { o:"Ας ακούσουμε τώρα το Μιχάλη να λέει την ιστορία", p:"아스 아쿠수메[강] 토라[강] 토 미할리[강] 나 레이[강] 틴 이스토리아[강]", k:"이제 미할리스가 이야기를 들려주는 것을 들어 봅시다", w:[["ιστορία","이스토리아[강]","이야기"]] },
+    { o:"Σηκώνομαι στις έξι κάθε πρωί.", p:"시코노메[강] 스티스 엑시[강] 카테[강] 프로이[강]", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["Σηκώνομαι","시코노메[강]","나는 일어난다"]] },
+    { o:"Φτιάχνω πρωινό και πίνω έναν καφέ.", p:"프티아크노[강] 프로이노[강] 케 피노[강] 에난 카페[강]", k:"나는 아침 식사를 만들고 커피 한 잔을 마신다.", w:[["πρωινό","프로이노[강]","아침 식사"]] },
+    { o:"Πηγαίνω στη δουλειά με το αυτοκίνητό μου.", p:"피게노[강] 스티 둘리아[강] 메 토 아프토키니토[강] 무", k:"나는 내 차를 타고 일터로 간다.", w:[["αυτοκίνητό","아프토키니토[강]","자동차"]] },
+    { o:"Η δουλειά μου ξεκινά στις εφτά και τριάντα.", p:"이 둘리아[강] 무 크세키나[강] 스티스 에프타[강] 케 트리앙다[강]", k:"내 일은 일곱 시 삼십 분에 시작된다.", w:[["εφτά και τριάντα","에프타[강] 케 트리앙다[강]","7시 30분"]] },
+    { o:"Είμαι μάγειρας σε ένα εστιατόριο.", p:"이메[강] 마기라스[강] 세 에나 에스티아토리오[강]", k:"나는 한 식당에서 요리사로 일한다.", w:[["μάγειρας","마기라스[강]","요리사"]] },
+    { o:"Φτιάχνω φαγητό για πεινασμένους πελάτες.", p:"프티아크노[강] 파이토[강] 야 피나스메누스[강] 펠라테스[강]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["πεινασμένους","피나스메누스[강]","배고픈"]] },
+    { o:"Οι πελάτες είναι από πολλές διαφορετικές χώρες.", p:"이 펠라테스[강] 이네[강] 아포 폴레스[강] 디아포레티케스[강] 호레스[강]", k:"손님들은 여러 다른 많은 나라에서 온다.", w:[["χώρες","호레스[강]","나라들"]] },
+    { o:"Αυτοί μιλούν πολλές διαφορετικές γλώσσες.", p:"아프티[강] 밀로운[강] 폴레스[강] 디아포레티케스[강] 글로세스[강]", k:"그들은 여러 가지 다른 언어를 많이 말한다.", w:[["γλώσσες","글로세스[강]","언어들"]] },
+    { o:"Μπορώ να συναντήσω πολλούς φιλικούς ανθρώπους.", p:"보로[강] 나 시난디소[강] 폴루스[강] 필리쿠스[강] 안드로푸스[강]", k:"나는 친절한 사람들을 많이 만날 수 있다.", w:[["φιλικούς","필리쿠스[강]","친절한"]] },
+    { o:"Είμαι ευτυχισμένος όταν μιλάω στους πελάτες.", p:"이메[강] 에프티히스메노스[강] 오탄[강] 밀라오[강] 스투스 펠라테스[강]", k:"나는 손님들에게 이야기할 때 행복하다.", w:[["ευτυχισμένος","에프티히스메노스[강]","행복한"]] }
+  ]},
+  { id:"27", name:"일본어", native:"日本語", tts:"ja-JP", sents:[
+    { o:"私は毎朝六時に起きます。", p:"와타시[평판] 와[평판] 마이초오[평판] 로쿠지[중높] 니[평판] 오키마스[끝높]", k:"저는 매일 아침 여섯 시에 일어납니다.", w:[["私","와타시[평판]","나, 저"],["起きます","오키마스[끝높]","일어납니다"]] },
+    { o:"私は朝食を作りコーヒーを飲みます。", p:"와타시[평판] 와[평판] 초오쇼쿠[평판] 오[평판] 츠쿠리[끝높] 코오히이[중높] 오[평판] 노미마스[끝높]", k:"저는 아침 식사를 만들어 커피를 마십니다.", w:[["朝食","초오쇼쿠[평판]","아침 식사"]] },
+    { o:"私は仕事のために私の車を運転します。", p:"와타시[평판] 와[평판] 시고토[평판] 노[평판] 타메[평판] 니[평판] 와타시[평판] 노[평판] 쿠루마[중높] 오[평판] 운텐시마스[끝높]", k:"저는 일을 위해 제 차를 운전합니다.", w:[["車","쿠루마[중높]","자동차"]] },
+    { o:"私の仕事は七時三十分から始まります。", p:"와타시[평판] 노[평판] 시고토[평판] 와[평판] 시치지[중높] 산줏푼[중높] 카라[평판] 하지마리마스[끝높]", k:"제 일은 일곱 시 삼십 분부터 시작됩니다.", w:[["七時三十分","시치지[중높] 산줏푼[중높]","7시 30분"]] },
+    { o:"私はレストランで料理をしています。", p:"와타시[평판] 와[평판] 레스토란[중높] 데[평판] 료오리[평판] 오[평판] 시테이마스[끝높]", k:"저는 식당에서 요리를 하고 있습니다.", w:[["レストラン","레스토란[중높]","식당"]] },
+    { o:"私はおなかのすいたお客様に食事を作ります。", p:"와타시[평판] 와[평판] 오나카[중높] 노[평판] 스이타[중높] 오캬쿠사마[끝높] 니[평판] 쇼쿠지[평판] 오[평판] 츠쿠리마스[끝높]", k:"저는 배고픈 손님에게 식사를 만들어 줍니다.", w:[["おなかのすいた","오나카[중높] 노[평판] 스이타[중높]","배고픈"]] },
+    { o:"お客様はいろいろな国から来ます。", p:"오캬쿠사마[끝높] 와[평판] 이로이로나[중높] 쿠니[평판] 카라[평판] 키마스[끝높]", k:"손님들은 여러 가지 나라에서 옵니다.", w:[["国","쿠니[평판]","나라"]] },
+    { o:"彼らは多くの異なった言語で話します。", p:"카레라[중높] 와[평판] 오오쿠[첫높] 노[평판] 코토낫타[끝높] 겐고[평판] 데[평판] 하나시마스[끝높]", k:"그들은 많은 서로 다른 언어로 말합니다.", w:[["言語","겐고[평판]","언어"]] },
+    { o:"私はたくさんの友好的な人たちと会うことができます。", p:"와타시[평판] 와[평판] 타쿠산[중높] 노[평판] 유우코오테키나[끝높] 히토타치[끝높] 토[평판] 아우[중높] 코토[평판] 가[평판] 데키마스[끝높]", k:"저는 친절한 사람들을 많이 만날 수 있습니다.", w:[["友好的な","유우코오테키나[끝높]","친절한"]] },
+    { o:"私はこのようなお客様と話しをする時幸せに感じます。", p:"와타시[평판] 와[평판] 코노요오나[중높] 오캬쿠사마[끝높] 토[평판] 하나시[끝높] 오[평판] 스루[평판] 토키[중높] 시아와세니[끝높] 칸지마스[끝높]", k:"저는 이런 손님과 이야기할 때 행복하게 느낍니다.", w:[["幸せに","시아와세니[끝높]","행복하게"]] }
+  ]},
+  { id:"28", name:"헝가리어", native:"Magyar", tts:"hu-HU", sents:[
+    { o:"Minden reggel 6:00-kor kelek fel.", p:"민[강]덴 레[강]겔 허[강]트 오[강·장]러코르 켈[강]레크 펠[강]", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["kelek fel","켈[강]레크 펠[강]","나는 일어난다"]] },
+    { o:"Reggelit készítek és iszok egy kávét.", p:"레[강]겔리트 케[강·장]시[장]테크 에[강·장]시 이[강]소크 에[강]지 카[강·장]베[장]트", k:"나는 아침을 만들고 커피 한 잔을 마신다.", w:[["Reggelit","레[강]겔리트","아침 식사를"]] },
+    { o:"Az autómmal megyek dolgozni.", p:"어[강]즈 어[강]우토[장]멀 메[강]제크 돌[강]고즈니", k:"나는 내 차로 일하러 간다.", w:[["autómmal","어[강]우토[장]멀","내 차로"]] },
+    { o:"A munkám 7:30-kor kezdődik.", p:"어[강] 문[강]캄[장] 헤[강·장]트 허[강]르민츠코르 케[강]즈되[장]디크", k:"내 일은 일곱 시 삼십 분에 시작된다.", w:[["munkám","문[강]캄[장]","내 일"]] },
+    { o:"Szakács vagyok egy étteremben.", p:"서[강]카[장]치 버[강]조크 에[강]지 에[강·장]트테렘벤", k:"나는 한 식당의 요리사다.", w:[["Szakács","서[강]카[장]치","요리사"]] },
+    { o:"Ételt készítek az éhes vendégeknek.", p:"에[강·장]텔트 케[강·장]시[장]테크 어[강]즈 에[강·장]헤시 벤[강]데[장]게크네크", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["éhes","에[강·장]헤시","배고픈"]] },
+    { o:"A vendégek sok különböző országból származnak.", p:"어[강] 벤[강]데[장]게크 쇼[강]크 퀴[강]뢴뵈죄[장] 오[강]르사[장]그보[장]울 사[강·장]르머즈너크", k:"손님들은 여러 다른 많은 나라에서 온다.", w:[["országból","오[강]르사[장]그보[장]울","나라에서"]] },
+    { o:"Ők sok különböző nyelvet beszélnek.", p:"외[강·장]크 쇼[강]크 퀴[강]뢴뵈죄[장] 니[강]엘베트 베[강]세[장]르네크", k:"그들은 여러 가지 다른 많은 언어를 말한다.", w:[["nyelvet","니[강]엘베트","언어를"]] },
+    { o:"Sok barátságos emberrel tudok találkozni.", p:"쇼[강]크 버[강]라[장]차[장]고시 엠[강]베렐 투[강]도크 터[강]라[장]르코즈니", k:"나는 다정한 사람들을 많이 만날 수 있다.", w:[["barátságos","버[강]라[장]차[장]고시","친절한"]] },
+    { o:"Boldog vagyok, amikor beszélgetek a vendégekkel.", p:"볼[강]도그 버[강]조크 어[강]미코르 베[강]세[장]르게테크 어[강] 벤[강]데[장]게켈", k:"나는 손님들과 이야기할 때 행복하다.", w:[["Boldog","볼[강]도그","행복한"]] }
+  ]},
+  { id:"29", name:"영국 코크니 슬랭", native:"Cockney", tts:"en-GB", sents:[
+    { o:"'Ere's the same story told anuvver way.", p:"이어즈[강] 더 세임[강] 스토리[강] 톨드[강] 어너버[강] 웨이[강]", k:"여기 같은 이야기를 다른 방식으로 들려드립니다.", w:[["'Ere's","이어즈[강]","Here is"],["anuvver","어너버[강]","another"]] },
+    { o:"I'm up at six o'clock every mornin'.", p:"아임 업 앳 식스[강] 어클록 에브리 모닌[강]", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["mornin'","모닌[강]","아침"]] },
+    { o:"I make a bit o' breakfast an' 'ave a cup o' coffee.", p:"아이 메익[강] 어 비트 어 브렉퍼스트[강] 언 애브[강] 어 컵 어 커피[강]", k:"나는 아침을 조금 만들고 커피 한 잔을 마신다.", w:[["'ave","애브[강]","have"]] },
+    { o:"I drive ter work in me motor.", p:"아이 드라이브[강] 터 웍[강] 인 미 모터[강]", k:"나는 내 차를 몰고 일하러 간다.", w:[["me motor","미 모터[강]","내 차"]] },
+    { o:"My work starts at 'alf past seven.", p:"마이 웍[강] 스타츠[강] 앳 아프 파스트 세븐[강]", k:"내 일은 일곱 시 삼십 분에 시작한다.", w:[["'alf past seven","아프 파스트 세븐[강]","7시 30분"]] },
+    { o:"I'm a cook at a gaff.", p:"아임 어 쿡[강] 앳 어 가프[강]", k:"나는 어떤 식당에서 요리사로 일한다.", w:[["gaff","가프[강]","가게·식당"]] },
+    { o:"I make grub for 'ungry customers.", p:"아이 메익[강] 그럽[강] 포 엉그리[강] 커스터머즈[강]", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["grub","그럽[강]","음식"]] },
+    { o:"The customers come from all four corners.", p:"더 커스터머즈[강] 컴[강] 프롬 올 포 코너스", k:"손님들은 온 세상 사방에서 온다.", w:[["all four corners","올 포 코너스","온 세상 사방"]] },
+    { o:"They rabbit on in all sorts o' lingo.", p:"데이 래빗 온 인 올 소츠 어 링고[강]", k:"그들은 온갖 말로 재잘댄다.", w:[["rabbit on","래빗 온","수다 떨다"],["lingo","링고[강]","언어"]] },
+    { o:"I get ter meet loads o' friendly faces.", p:"아이 겟 터 미트[강] 로즈 어 프렌들리[강] 페이시스[강]", k:"나는 친절한 사람들을 많이 만나게 된다.", w:[["loads o'","로즈 어","많은"]] },
+    { o:"I'm proper chuffed when I 'ave a natter wiv me customers.", p:"아임 프로퍼[강] 처프트[강] 웬 아이 애브 어 내터 위브 미 커스터머즈[강]", k:"나는 손님들과 이야기를 나눌 때 아주 기쁘다.", w:[["proper chuffed","프로퍼[강] 처프트[강]","아주 기쁜"],["natter","내터","수다"]] }
+  ]},
+  { id:"30", name:"웨일스어", native:"Cymraeg", tts:"cy-GB", sents:[
+    { o:"Dyma'r un stori wedi'i hadrodd mewn ffordd wahanol.", p:"뒤마르 윈 스토리[강] 웨디 하드로[강]드 메운 포르드[강] 와하놀[강]", k:"이것이 다른 방식으로 들려주는 같은 이야기입니다.", w:[["Dyma'r","뒤마르","이것이"],["stori","스토리[강]","이야기"],["ffordd wahanol","포르드[강] 와하놀[강]","다른 방식"]] },
+    { o:"Rwy'n codi am chwech o'r gloch bob bore.", p:"루인 코[강]디 암 흐웨흐[강] 오르 글로[강]흐 보브 보[강]레", k:"나는 매일 아침 여섯 시에 일어난다.", w:[["Rwy'n codi","루인 코[강]디","나는 일어난다"],["chwech","흐웨흐[강]","여섯"],["bore","보[강]레","아침"]] },
+    { o:"Rwy'n gwneud fy mrecwast ac yn yfed paned o goffi.", p:"루인 그네우드[강] 비 브레크와스트[강] 아크 인 이[강]베드 파[강]네드 오 코[강]피", k:"나는 내 아침 식사를 만들고 커피 한 잔을 마신다.", w:[["gwneud","그네우드[강]","만들다"],["mrecwast","브레크와스트[강]","아침 식사"],["paned o goffi","파[강]네드 오 코[강]피","커피 한 잔"]] },
+    { o:"Rwy'n gyrru i'r gwaith yn fy nghar.", p:"루인 기[강]리 이르 그와[강]이흐 인 비 응하르[강]", k:"나는 내 차를 타고 일하러 간다.", w:[["gyrru","기[강]리","운전해 가다"],["gwaith","그와[강]이흐","직장"],["fy nghar","비 응하르[강]","내 차"]] },
+    { o:"Mae fy ngwaith yn dechrau am hanner awr wedi saith.", p:"마이 비 응과[강]이흐 인 데흐라[강]이 암 하[강]네르 아[강]우르 웨[강]디 사이흐[강]", k:"내 일은 일곱 시 삼십 분에 시작된다.", w:[["yn dechrau","인 데흐라[강]이","시작되다"],["hanner awr wedi saith","하[강]네르 아[강]우르 웨[강]디 사이흐[강]","7시 30분"]] },
+    { o:"Rwy'n gogydd mewn bwyty.", p:"루인 코[강]기드 메운 부이[강]티", k:"나는 한 식당에서 요리사로 일한다.", w:[["gogydd","코[강]기드","요리사"],["bwyty","부이[강]티","식당"]] },
+    { o:"Rwy'n gwneud bwyd i gwsmeriaid llwglyd.", p:"루인 그네우드[강] 부이드[강] 이 쿠스메[강]리아이드 흘루글리[강]드", k:"나는 배고픈 손님들을 위해 음식을 만든다.", w:[["bwyd","부이드[강]","음식"],["llwglyd","흘루글리[강]드","배고픈"]] },
+    { o:"Mae'r cwsmeriaid yn dod o lawer o wledydd gwahanol.", p:"마이어 쿠스메[강]리아이드 인 도[강]드 오 라[강]웨르 오 글레[강]디드 그와하놀[강]", k:"손님들은 여러 다른 많은 나라에서 온다.", w:[["yn dod","인 도[강]드","오다"],["wledydd","글레[강]디드","나라들"]] },
+    { o:"Maen nhw'n siarad llawer o ieithoedd gwahanol.", p:"마인 흐운 시아[강]라드 라[강]웨르 오 이에이[강]호에드 그와하놀[강]", k:"그들은 여러 가지 다른 많은 언어를 말한다.", w:[["siarad","시아[강]라드","말하다"],["ieithoedd","이에이[강]호에드","언어들"]] },
+    { o:"Gallaf gwrdd â llawer o bobl gyfeillgar.", p:"가[강]라브 구르드[강] 아 라[강]웨르 오 포[강]블 기베일[강]가르", k:"나는 친절한 사람들을 많이 만날 수 있다.", w:[["gwrdd â","구르드[강] 아","만나다"],["gyfeillgar","기베일[강]가르","친절한"]] },
+    { o:"Rwy'n hapus pan rwy'n siarad â'r cwsmeriaid.", p:"루인 하[강]피스 판 루인 시아[강]라드 아르 쿠스메[강]리아이드", k:"나는 손님들과 이야기할 때 행복하다.", w:[["hapus","하[강]피스","행복한"],["siarad","시아[강]라드","말하다"]] }
+  ]}
+];
+
+
+var curLangIdx = 1;
+var curSentIdx = 0;
+var cmpSentIdx = 1;
+var hideState = { pron: false, ko: false, tbl: false };
+
+function makeNaturalPron(str) {
+  var s = String(str);
+  // 불필요한 기계적 띄어쓰기를 줄여 실제 구어/연음 호흡에 가깝게 다듬음
+  s = s.replace(/\s+어(?=\s|\[|<|$)/g, '어');
+  s = s.replace(/\s+앤(?=\s|\[|<|$)/g, '앤');
+  s = s.replace(/\s+투(?=\s|\[|<|$)/g, '투');
+  s = s.replace(/\s+인(?=\s|\[|<|$)/g, '인');
+  s = s.replace(/\s+앳(?=\s|\[|<|$)/g, '앳');
+  s = s.replace(/\s+포(?=\s|\[|<|$)/g, '포');
+  s = s.replace(/\s+프롬(?=\s|\[|<|$)/g, '프롬');
+  s = s.replace(/\s+오브(?=\s|\[|<|$)/g, '오브');
+  s = s.replace(/\s+어브(?=\s|\[|<|$)/g, '어브');
+  s = s.replace(/\s+더(?=\s|\[|<|$)/g, '더');
+  // 연속된 짧은 음절 사이 공백을 줄여 자연스러운 연음 흐름 형성
+  s = s.replace(/([가-힣]{1,2})\s+([가-힣]{1,2})(?=\s|\[|<|$)/g, '$1$2');
+  s = s.replace(/([가-힣]{1,2})\s+([가-힣]{1,2})(?=\s|\[|<|$)/g, '$1$2');
+  return s;
+}
+
+function formatTags(str) {
+  return String(str)
+    .replace(/\[(강|장|강·장)\]/g, '<span class="tag-stress">[$1]</span>')
+    .replace(/\[(높평|올림|낮꺾|내림|경성|높상|중평|낮내|낮상|낮평|평판|첫높|중높|끝높)\]/g, '<span class="tag-tone">[$1]</span>');
+}
+
+function initSelects() {
+  var selects = ['lang-select', 'quiz-lang-select', 'cmp-1', 'cmp-2', 'cmp-3'];
+  var optionsHtml = '';
+  for (var idx = 0; idx < DATA.length; idx++) {
+    var d = DATA[idx];
+    optionsHtml += '<option value="' + idx + '">' + d.id + '. ' + d.name + ' (' + d.native + ')</option>';
+  }
+  for (var s = 0; s < selects.length; s++) {
+    var el = document.getElementById(selects[s]);
+    if (el) el.innerHTML = optionsHtml;
+  }
+  document.getElementById('lang-select').value = curLangIdx;
+  document.getElementById('quiz-lang-select').value = 29;
+  document.getElementById('cmp-1').value = 14;
+  document.getElementById('cmp-2').value = 20;
+  document.getElementById('cmp-3').value = 29;
+}
+
+function setMode(mode, btn) {
+  var btns = document.querySelectorAll('.tab-btn');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].classList.remove('active');
+  }
+  btn.classList.add('active');
+  var modes = ['card', 'quiz', 'compare'];
+  for (var m = 0; m < modes.length; m++) {
+    var sec = document.getElementById('mode-' + modes[m]);
+    if (modes[m] === mode) {
+      sec.classList.remove('hidden');
+    } else {
+      sec.classList.add('hidden');
+    }
+  }
+  if (mode === 'quiz') newQuiz();
+  if (mode === 'compare') renderCompare();
+}
+
+function selectLang(idx) {
+  curLangIdx = Number(idx);
+  curSentIdx = 0;
+  renderCard();
+}
+
+function setSent(i) {
+  curSentIdx = i;
+  renderCard();
+}
+
+function toggleHide(key) {
+  hideState[key] = !hideState[key];
+  var btn = document.getElementById('toggle-' + key);
+  if (hideState[key]) {
+    btn.classList.add('active');
+  } else {
+    btn.classList.remove('active');
+  }
+  renderCard();
+}
+
+function renderCard() {
+  var lang = DATA[curLangIdx];
+  if (!lang) return;
+  if (curSentIdx >= lang.sents.length) curSentIdx = 0;
+  var s = lang.sents[curSentIdx];
+
+  var pillsHtml = '';
+  for (var i = 0; i < lang.sents.length; i++) {
+    pillsHtml += '<button class="pill ' + (i === curSentIdx ? 'active' : '') + '" onclick="setSent(' + i + ')">' + ORDINALS[i] + '</button>';
+  }
+  document.getElementById('sent-pills').innerHTML = pillsHtml;
+  document.getElementById('sent-counter').textContent = ORDINALS[curSentIdx] + ' (' + (curSentIdx + 1) + ' / ' + lang.sents.length + ')';
+
+  var rows = '';
+  for (var r = 0; r < s.w.length; r++) {
+    rows += '<tr><td><strong>' + s.w[r][0] + '</strong></td><td>' + formatTags(s.w[r][1]) + '</td><td>' + s.w[r][2] + '</td></tr>';
+  }
+
+  document.getElementById('card-body').innerHTML =
+    '<div class="card-top">' +
+      '<span>' + lang.id + '. ' + lang.name + ' (' + lang.native + ')</span>' +
+      '<span>' + ORDINALS[curSentIdx] + ' 문장 · <span id="tts-voice-info">' + voiceStatusBase(lang) + '</span></span>' +
+    '</div>' +
+    '<div class="orig-text">' + s.o + '</div>' +
+    '<div class="box">' +
+      '<div class="box-label">순수 한글 발음 — 끊어읽기/강세 (클릭 시 표시/숨김)</div>' +
+      '<div class="pron-text ' + (hideState.pron ? 'hidden-blur' : '') + '" onclick="this.classList.toggle(\'hidden-blur\')">' + formatTags(s.p) + '</div>' +
+    '</div>' +
+    '<div class="box">' +
+      '<div class="box-label">자연스러운 연음 발음 (클릭 시 표시/숨김)</div>' +
+      '<div class="nat-text ' + (hideState.pron ? 'hidden-blur' : '') + '" onclick="this.classList.toggle(\'hidden-blur\')">' + formatTags(makeNaturalPron(s.p)) + '</div>' +
+    '</div>' +
+    '<div class="box">' +
+      '<div class="box-label">전체 해석 (클릭 시 표시/숨김)</div>' +
+      '<div class="ko-text ' + (hideState.ko ? 'hidden-blur' : '') + '" onclick="this.classList.toggle(\'hidden-blur\')">' + s.k + '</div>' +
+    '</div>' +
+    '<table class="' + (hideState.tbl ? 'hidden-blur' : '') + '" onclick="this.classList.remove(\'hidden-blur\')">' +
+      '<thead><tr><th>원어 단어</th><th>한글 발음</th><th>뜻 · 분석</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+    '</table>';
+
+  refreshVoiceStatus();
+}
+
+function prevSent() {
+  var len = DATA[curLangIdx].sents.length;
+  curSentIdx = (curSentIdx - 1 + len) % len;
+  renderCard();
+}
+
+function nextSent() {
+  var len = DATA[curLangIdx].sents.length;
+  curSentIdx = (curSentIdx + 1) % len;
+  renderCard();
+}
+
+/* ===== TTS 엔진 (v9 수정본) ===== */
+var cachedVoices = [];
+var lastVoiceError = '';
+var speakTimer = null;
+var speakToken = 0;
+var MSG_NO_VOICE = '기기에 해당 언어 음성이 없음 (설정 > 손쉬운 사용 > 말하기 콘텐츠 > 음성에서 추가)';
+
+// 고품질 성우 키워드 / 저음질(기계음) 키워드
+var VOICE_GOOD_WORDS = ['enhanced', 'premium', 'siri', 'natural', 'neural', 'online', 'google'];
+var VOICE_BAD_WORDS = ['compact', 'eloquence', 'espeak', 'pico'];
+// 영국식 이름(영국 성우로 간주할 이름들)
+var UK_VOICE_NAMES = ['daniel', 'oliver', 'arthur', 'kate', 'serena', 'martha', 'stephanie', 'libby', 'sonia', 'ryan', 'maisie', 'google uk english'];
+// 브라우저·OS가 다른 태그로 보고하는 같은 언어(노르웨이어 복수 태그)
+var LANG_ALIASES = { 'nb': ['no'], 'no': ['nb'] };
+
+function voiceQualityScore(name) {
+  var n = String(name || '').toLowerCase();
+  var score = 0;
+  for (var i = 0; i < VOICE_GOOD_WORDS.length; i++) {
+    if (n.indexOf(VOICE_GOOD_WORDS[i]) !== -1) score += 10;
+  }
+  for (var j = 0; j < VOICE_BAD_WORDS.length; j++) {
+    if (n.indexOf(VOICE_BAD_WORDS[j]) !== -1) score -= 30;
+  }
+  return score;
+}
+
+function nameIsUk(name) {
+  var n = String(name || '').toLowerCase();
+  for (var i = 0; i < UK_VOICE_NAMES.length; i++) {
+    if (n.indexOf(UK_VOICE_NAMES[i]) !== -1) return true;
+  }
+  return false;
+}
+
+function getAllVoices() {
+  if (!('speechSynthesis' in window)) return [];
+  var list = window.speechSynthesis.getVoices() || [];
+  if (list.length) {
+    cachedVoices = list;
+    return list;
+  }
+  return cachedVoices || [];
+}
+
+function loadVoices() {
+  if (!('speechSynthesis' in window)) return;
+  var list = window.speechSynthesis.getVoices() || [];
+  if (list.length) cachedVoices = list;
+  refreshVoiceStatus();
+}
+
+function initVoices() {
+  if (!('speechSynthesis' in window)) return;
+  loadVoices();
+  // 목소리 목록이 늦게 도착하는 기기(iOS·Safari·웹뷰)를 위해 두 경로 모두 등록하고 한 번 더 확인
+  window.speechSynthesis.onvoiceschanged = loadVoices;
+  if (window.speechSynthesis.addEventListener) {
+    window.speechSynthesis.addEventListener('voiceschanged', loadVoices);
+  }
+  setTimeout(loadVoices, 300);
+  setTimeout(loadVoices, 1500);
+}
+
+function voiceStatusBase(lang) {
+  if (!lang) return '';
+  return 'TTS ' + lang.tts + (lang.ttsNote ? (' · ' + lang.ttsNote) : '');
+}
+
+function setVoiceStatus(msg, langObj) {
+  var statusEl = document.getElementById('tts-voice-info');
+  if (!statusEl) return;
+  var lang = langObj || DATA[curLangIdx];
+  var note = (lang && lang.ttsNote) ? (' · ' + lang.ttsNote) : '';
+  statusEl.textContent = msg + note;
+}
+
+function refreshVoiceStatus() {
+  var lang = DATA[curLangIdx];
+  if (!lang) return;
+  var statusEl = document.getElementById('tts-voice-info');
+  if (!statusEl) return;
+  var base = voiceStatusBase(lang);
+  if (!('speechSynthesis' in window)) {
+    statusEl.textContent = base;
+    return;
+  }
+  var info = getVoiceMatchInfo(lang.tts);
+  if (info.totalVoices === 0) {
+    // 목소리 목록을 아직 못 받은 상태 → 기본 표시만 유지
+    statusEl.textContent = base;
+    return;
+  }
+  if (info.voice) {
+    statusEl.textContent = base;
+    statusEl.setAttribute('title', '선택 음성: ' + info.voice.name + ' [' + info.voice.lang + ']');
+  } else {
+    statusEl.textContent = MSG_NO_VOICE + (lang.ttsNote ? (' · ' + lang.ttsNote) : '');
+  }
+}
+
+function getVoiceMatchInfo(langCode) {
+  var empty = { voice: null, matched: false, totalVoices: 0, sameLangList: [] };
+  if (!('speechSynthesis' in window)) return empty;
+  var voices = getAllVoices();
+  if (!voices.length) return empty;
+
+  var target = String(langCode || '').toLowerCase().replace(/_/g, '-');
+  var prefix = target.split('-')[0];
+  var aliasPrefixes = LANG_ALIASES[prefix] || [];
+
+  var best = null;
+  var bestScore = -100000;
+  var sameLangList = [];
+
+  for (var i = 0; i < voices.length; i++) {
+    var v = voices[i];
+    var vLang = String(v.lang || '').toLowerCase().replace(/_/g, '-');
+    var vPrefix = vLang.split('-')[0];
+    var vName = String(v.name || '').toLowerCase();
+
+    var langScore = 0;
+    if (vLang === target) {
+      langScore = 100;                                              // 언어 태그 정확히 일치
+    } else if (target === 'en-gb' && vPrefix === 'en' && nameIsUk(vName)) {
+      langScore = 95;                                               // 영국식 이름의 영어 성우
+    } else if (vPrefix === prefix || aliasPrefixes.indexOf(vPrefix) !== -1) {
+      langScore = 40;                                               // 같은 언어의 다른 지역 변종
+    }
+    if (!langScore) continue;                                        // 다른 언어 음성은 쓰지 않음
+
+    sameLangList.push(v);
+    var score = langScore + voiceQualityScore(vName);                // 고품질 우선, compact·eloquence 후순위
+    if (score > bestScore) {
+      bestScore = score;
+      best = v;
+    }
+  }
+
+  return {
+    voice: best,
+    matched: Boolean(best),
+    totalVoices: voices.length,
+    sameLangList: sameLangList
+  };
+}
+
+function pickBestVoice(langCode) {
+  return getVoiceMatchInfo(langCode).voice;
+}
+
+function buildNaturalSpeechText(text, langId) {
+  var t = String(text || '').trim();
+  // 괄호 안 설명/화자 표기 정리 및 쉼표/마침표 호흡 자연화
+  t = t.replace(/^\([^)]*\)\s*/, '');
+  if (langId === '20' || langId === '22' || langId === '23') {
+    // 스코츠 계열 축약/방언 철자를 발음 엔진이 자연스럽게 읽도록 보조
+    t = t.replace(/\bA\b/g, 'I').replace(/\bme\b/g, 'my').replace(/\btae\b/g, 'to').replace(/\bwark\b/g, 'work').replace(/\bcaur\b/g, 'car');
+  }
+  return t;
+}
+
+function speakSentence(rate) {
+  if (!('speechSynthesis' in window)) {
+    alert('현재 뷰어에서는 음성 합성을 지원하지 않습니다. PC 브라우저나 모바일 웹 브라우저(Chrome·Safari 등)에서 열어주세요.');
+    return;
+  }
+  var lang = DATA[curLangIdx];
+  if (!lang) return;
+  var sent = lang.sents[Math.min(curSentIdx, lang.sents.length - 1)];
+
+  lastVoiceError = '';
+  if (speakTimer) {
+    clearTimeout(speakTimer);
+    speakTimer = null;
+  }
+  var myToken = ++speakToken;   // 연속 클릭 시 이전 예약 재생을 무효화
+
+  // 재생 중인 음성 정지
+  window.speechSynthesis.cancel();
+  if (window.speechSynthesis.paused) {
+    window.speechSynthesis.resume();
+  }
+
+  var info = getVoiceMatchInfo(lang.tts);
+  var rawText = buildNaturalSpeechText(sent.o, lang.id);
+
+  // 목소리 목록은 있는데 이 언어 성우가 없으면 엉뚱한 언어로 읽지 않고 안내만 표시
+  if (info.totalVoices > 0 && !info.voice) {
+    setVoiceStatus(MSG_NO_VOICE, lang);
+    return;
+  }
+
+  var baseRate = 0.93;
+  if (lang.id === '18' || lang.id === '19' || lang.id === '27') baseRate = 0.90;
+  if (lang.id === '04' || lang.id === '05' || lang.id === '06' || lang.id === '07') baseRate = 0.95;
+  var useRate = (typeof rate === 'number' && rate > 0) ? rate : 1.0;
+  if (useRate === 1.0) useRate = baseRate;
+
+  // cancel() 직후 바로 speak() 하면 첫 음절이 씹히거나 끊기는 기기가 있어 80ms 뒤 재생
+  speakTimer = setTimeout(function() {
+    speakTimer = null;
+    if (myToken !== speakToken) return;   // 그 사이 새 재생 요청이 들어왔으면 취소
+    if (!('speechSynthesis' in window)) return;
+
+    // 목록이 비어 있던 기기(iOS·웹뷰)는 이 시점에 목소리가 도착해 있을 수 있어 한 번 더 확인
+    if (info.totalVoices === 0) {
+      var lateInfo = getVoiceMatchInfo(lang.tts);
+      if (lateInfo.totalVoices > 0) info = lateInfo;
+      if (info.totalVoices > 0 && !info.voice) {
+        setVoiceStatus(MSG_NO_VOICE, lang);
+        return;
+      }
+    }
+
+    var u = new SpeechSynthesisUtterance(rawText);
+    u.lang = lang.tts;
+    if (info.voice) u.voice = info.voice;
+    u.rate = useRate;
+    u.pitch = 1.0;
+
+    u.onerror = function(ev) {
+      var err = ev && ev.error ? String(ev.error) : '재생 오류';
+      if (err === 'canceled' || err === 'interrupted') return;   // 새 재생·정지로 인한 정상 취소
+      lastVoiceError = err;
+      setVoiceStatus('TTS 오류(' + err + ')', lang);
+    };
+
+    if (info.totalVoices === 0) {
+      // iOS·웹뷰: 목소리 목록이 비어 있어도 lang만 지정해 폴백 재생
+      setVoiceStatus('목소리 목록 0개 — 기본 음성으로 시도', lang);
+    } else {
+      setVoiceStatus('음성: ' + info.voice.name + ' [' + info.voice.lang + '] (전체 ' + info.totalVoices + '개)', lang);
+    }
+
+    window.speechSynthesis.speak(u);
+  }, 80);
+}
+
+var currentQuizCorrectIndex = 0;
+
+function newQuiz() {
+  var idx = Number(document.getElementById('quiz-lang-select').value);
+  var lang = DATA[idx];
+  var qIdx = Math.floor(Math.random() * lang.sents.length);
+  var correct = lang.sents[qIdx];
+
+  var pool = [];
+  for (var i = 0; i < lang.sents.length; i++) {
+    if (i !== qIdx) pool.push(lang.sents[i]);
+  }
+  pool.sort(function() { return Math.random() - 0.5; });
+  var options = [correct, pool[0], pool[1], pool[2]].sort(function() { return Math.random() - 0.5; });
+
+  var optsHtml = '';
+  for (var j = 0; j < options.length; j++) {
+    var isRight = (options[j] === correct) ? 'true' : 'false';
+    optsHtml += '<button class="quiz-opt" onclick="checkQuiz(this, ' + isRight + ')">' + options[j].k + '</button>';
+  }
+
+  document.getElementById('quiz-body').innerHTML =
+    '<div class="card-top"><span>' + lang.id + '. ' + lang.name + ' 뜻 맞추기</span><span>문장 퀴즈</span></div>' +
+    '<div class="orig-text">' + correct.o + '</div>' +
+    '<div style="color:var(--muted); margin-bottom:12px;">발음: ' + formatTags(correct.p) + '</div>' +
+    optsHtml;
+}
+
+function checkQuiz(btn, isCorrect) {
+  var opts = document.querySelectorAll('.quiz-opt');
+  for (var i = 0; i < opts.length; i++) {
+    opts[i].disabled = true;
+  }
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+}
+
+function setCmpSent(i) {
+  cmpSentIdx = i;
+  renderCompare();
+}
+
+function renderCompare() {
+  var pills = '';
+  for (var i = 0; i < 10; i++) {
+    pills += '<button class="pill ' + (i === cmpSentIdx ? 'active' : '') + '" onclick="setCmpSent(' + i + ')">' + ORDINALS[i] + '</button>';
+  }
+  document.getElementById('cmp-pills').innerHTML = pills;
+
+  var selectIds = ['cmp-1', 'cmp-2', 'cmp-3'];
+  var gridHtml = '';
+  for (var j = 0; j < selectIds.length; j++) {
+    var lIdx = Number(document.getElementById(selectIds[j]).value);
+    var lang = DATA[lIdx];
+    var s = lang.sents[Math.min(cmpSentIdx, lang.sents.length - 1)];
+    gridHtml +=
+      '<div class="card">' +
+        '<div class="card-top"><span>' + lang.id + '. ' + lang.name + '</span><span>' + lang.native + '</span></div>' +
+        '<div style="font-size:1.15rem; font-weight:700; margin-bottom:10px;">' + s.o + '</div>' +
+        '<div class="box"><div class="box-label">발음</div><div>' + formatTags(s.p) + '</div></div>' +
+        '<div class="box"><div class="box-label">해석</div><div>' + s.k + '</div></div>' +
+      '</div>';
+  }
+  document.getElementById('compare-grid').innerHTML = gridHtml;
+}
+
+
+function showVoiceDiag() {
+  var lang = DATA[curLangIdx];
+  var voices = ('speechSynthesis' in window) ? (window.speechSynthesis.getVoices() || cachedVoices || []) : [];
+  var info = getVoiceMatchInfo(lang.tts);
+  var sameSummary = info.sameLangList.slice(0, 5).map(function(v) {
+    return v.name + ' (' + v.lang + ')';
+  }).join(', ') || '없음';
+  var allSample = voices.slice(0, 8).map(function(v) {
+    return v.name + ' [' + v.lang + ']';
+  }).join(' / ') || '목록 비어 있음';
+
+  alert(
+    '[음성 엔진 진단]\n' +
+    '- 현재 언어: ' + lang.name + ' (' + lang.tts + ')\n' +
+    '- 브라우저 speechSynthesis 지원: ' + (('speechSynthesis' in window) ? '예' : '아니오') + '\n' +
+    '- 기기 전체 설치 목소리 수: ' + voices.length + '개\n' +
+    '- 선택된 목소리: ' + (info.voice ? (info.voice.name + ' [' + info.voice.lang + ']') : '없음(이 언어 음성 미설치 — 재생하지 않음)') + '\n' +
+    '- 일치 언어군 목소리: ' + sameSummary + '\n' +
+    '- 기기 목소리 샘플: ' + allSample + '\n' +
+    (lastVoiceError ? ('- 최근 오류: ' + lastVoiceError + '\n') : '') +
+    '\n※ 목소리 수가 0개이거나 해당 언어 목소리가 없다면, 기기 설정(언어/음성 합성)이나 외부 브라우저(Chrome/Safari)를 확인해 보세요.'
+  );
+}
+
+initSelects();
+renderCard();
+initVoices();
+</script>
+</body>
+</html>
