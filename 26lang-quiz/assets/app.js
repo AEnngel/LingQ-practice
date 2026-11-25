@@ -307,9 +307,18 @@ function pronLine(pron) {
 
 /* ------------------------------------------------------------------ 데이터 */
 const cache = {};
+/* index.html 의 ?v= 값을 그대로 데이터 요청에도 붙여, 배포할 때 옛 JSON 이 남지 않게 한다 */
+const APP_V = (() => {
+  try {
+    const s = document.currentScript && document.currentScript.src;
+    const m = s && s.match(/[?&]v=(\d+)/);
+    return m ? m[1] : '';
+  } catch (e) { return ''; }
+})();
 async function load(path) {
   if (cache[path]) return cache[path];
-  const r = await fetch(path);
+  const url = APP_V ? path + (path.indexOf('?') >= 0 ? '&' : '?') + 'v=' + APP_V : path;
+  const r = await fetch(url);
   if (!r.ok) throw new Error(path + ' → HTTP ' + r.status);
   const j = await r.json();
   cache[path] = j;
