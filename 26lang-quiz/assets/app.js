@@ -13,10 +13,230 @@ const store = {
   del(k) { try { localStorage.removeItem('lq.' + k); } catch (e) { } }
 };
 
-const SET = Object.assign({ pron: true, tone: true }, store.get('settings', {}));
+const SET = Object.assign({ pron: true, tone: true, rate: 1 }, store.get('settings', {}));
 function saveSet() { store.set('settings', SET); }
 
 const MODE_NAME = { words: '단어', sent: '내 문장', gram: '문법 연습', verb: '동사 변화' };
+
+/* ================================================================== 음성(TTS)
+   기기에 들어 있는 음성(speechSynthesis)으로 원어를 읽어 준다.
+   - 언어별 BCP-47 코드로 음성을 고르고, 정확한 음성이 없으면 가까운 음성으로 대신한다.
+   - 배속은 0.5x · 1x · 1.5x · 2x, localStorage에 저장. */
+const LANG_CODE = {
+  1: 'ko-KR', 2: 'en-GB', 3: 'en-GB', 4: 'de-DE', 5: 'fr-FR', 6: 'es-ES', 7: 'pt-PT',
+  8: 'it-IT', 9: 'la', 10: 'nl-NL', 11: 'sco', 12: 'ga-IE', 13: 'da-DK', 14: 'nb-NO',
+  15: 'sv-SE', 16: 'is-IS', 17: 'fi-FI', 18: 'hu-HU', 19: 'pl-PL', 20: 'uk-UA',
+  21: 'ru-RU', 22: 'el-GR', 23: 'af-ZA', 24: 'ja-JP', 25: 'zh-CN', 26: 'zh-HK'
+};
+const GUIDE_CODE = {
+  en: 'en-GB', cockney: 'en-GB', scottish: 'en-GB', es: 'es-ES', de: 'de-DE',
+  fr: 'fr-FR', it: 'it-IT', pt: 'pt-PT', nl: 'nl-NL', ga: 'ga-IE'
+};
+const CODE_KO = {
+  'ko-KR': '한국어', 'en-GB': '영어', 'de-DE': '독일어', 'fr-FR': '프랑스어', 'es-ES': '스페인어',
+  'pt-PT': '포르투갈어', 'it-IT': '이탈리아어', 'la': '라틴어', 'nl-NL': '네덜란드어', 'sco': '스코츠어',
+  'ga-IE': '아일랜드어', 'da-DK': '덴마크어', 'nb-NO': '노르웨이어', 'sv-SE': '스웨덴어', 'is-IS': '아이슬란드어',
+  'fi-FI': '핀란드어', 'hu-HU': '헝가리어', 'pl-PL': '폴란드어', 'uk-UA': '우크라이나어', 'ru-RU': '러시아어',
+  'el-GR': '그리스어', 'af-ZA': '아프리칸스어', 'ja-JP': '일본어', 'zh-CN': '중국어', 'zh-HK': '광둥어',
+  'yue': '광둥어'
+};
+/* 정확한 음성이 기기에 없을 때 차례로 시도할 코드 */
+const CODE_FALLBACK = {
+  'la': ['it-IT'], 'sco': ['en-GB'], 'zh-HK': ['yue', 'zh-CN'], 'pt-PT': ['pt-BR'],
+  'nb-NO': ['no-NO', 'da-DK'], 'ga-IE': [], 'is-IS': []
+};
+const RATES = [0.5, 1, 1.5, 2];
+
+let toastTimer = null;
+function toast(msg, ms) {
+  let el = document.getElementById('toast');
+  if (!el) { el = document.createElement('div'); el.id = 'toast'; document.body.appendChild(el); }
+  el.textContent = msg;
+  el.classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('on'), ms || 2800);
+}
+
+const TTS = (() => {
+  const synth = (typeof window !== 'undefined' && window.speechSynthesis) || null;
+  const supported = !!synth && typeof window.SpeechSynthesisUtterance === 'function';
+  const waiting = [];
+  let voices = [], ready = false, curEl = null, curUtt = null, timer = null;
+
+  function refresh() {
+    if (!supported) return;
+    try { voices = synth.getVoices() || []; } catch (e) { voices = []; }
+    if (!voices.length || ready) return;
+    ready = true;
+    if (timer) { clearInterval(timer); timer = null; }
+    waiting.splice(0).forEach(cb => { try { cb(); } catch (e) { } });
+  }
+  if (supported) {
+    refresh();
+    try { synth.addEventListener('voiceschanged', refresh); } catch (e) { synth.onvoiceschanged = refresh; }
+    if (!ready) {
+      let n = 0;
+      timer = setInterval(() => { refresh(); if (ready || ++n >= 12) { clearInterval(timer); timer = null; } }, 350);
+    }
+  }
+
+  const norm = c => String(c || '').toLowerCase().replace(/_/g, '-');
+  function candidates(code) {
+    const list = [code].concat(CODE_FALLBACK[code] || []);
+    const base = String(code || '').split('-')[0];
+    if (base && base !== code) list.push(base);
+    return list.map(norm).filter(Boolean);
+  }
+  function find(code) {
+    if (!ready) refresh();
+    if (!voices.length) return null;
+    const cands = candidates(code);
+    for (const c of cands) {
+      const exact = voices.find(v => norm(v.lang) === c);
+      if (exact) return exact;
+    }
+    for (const c of cands) {
+      const pref = voices.find(v => norm(v.lang).startsWith(c + '-'));
+      if (pref) return pref;
+    }
+    return null;
+  }
+  function stop() {
+    if (curEl) curEl.classList.remove('playing');
+    curEl = null; curUtt = null;
+    if (!supported) return;
+    try { synth.cancel(); } catch (e) { }
+  }
+  function say(text, code, el, name) {
+    const t = String(text == null ? '' : text).replace(/\s+/g, ' ').trim();
+    if (!t) return false;
+    if (!supported) {
+      toast('이 브라우저에서는 음성 읽기를 쓸 수 없어요. 크롬이나 삼성 인터넷에서 열어 주세요.', 4200);
+      return false;
+    }
+    if (curEl && curEl === el) { stop(); return true; }   /* 듣던 버튼을 다시 누르면 정지 */
+    stop();
+    const v = find(code);
+    if (!v) {
+      const nm = name || CODE_KO[code] || code;
+      toast(`🔇 ${nm}(${code}) 음성이 이 기기에 없어요. 설정 › 언어 및 입력 › 텍스트 읽어주기에서 음성 데이터를 받아 주세요.`, 4800);
+      return false;
+    }
+    const u = new SpeechSynthesisUtterance(t);
+    u.voice = v;
+    u.lang = v.lang || code;
+    u.rate = Math.min(3, Math.max(0.3, Number(SET.rate) || 1));
+    u.pitch = 1;
+    curEl = el || null; curUtt = u;
+    if (el) el.classList.add('playing');
+    const done = () => { if (el) el.classList.remove('playing'); if (curUtt === u) { curUtt = null; curEl = null; } };
+    u.onend = done;
+    u.onerror = done;
+    /* 크롬 안드로이드에서는 cancel() 직후 같은 tick에 speak()하면 무시되는 경우가 있다 */
+    setTimeout(() => {
+      if (curUtt !== u) return;
+      try { synth.resume(); } catch (e) { }
+      try { synth.speak(u); } catch (e) { done(); toast('음성을 재생하지 못했어요.'); }
+    }, 40);
+    return true;
+  }
+  return {
+    supported, say, stop, find,
+    has: code => !!find(code),
+    get ready() { return ready; },
+    whenReady: cb => {
+      if (ready) { try { cb(); } catch (e) { } return; }
+      waiting.push(cb);
+      setTimeout(() => { try { cb(); } catch (e) { } }, 3500);
+    }
+  };
+})();
+
+/* 한국어 설명이 섞인 문법 문제에서 목표 언어 부분만 뽑아 읽는다 */
+const SCRIPT = {
+  latin: /[A-Za-z\u00C0-\u024F]/,
+  cyr: /[\u0400-\u04FF]/,
+  greek: /[\u0370-\u03FF\u1F00-\u1FFF]/,
+  jp: /[\u3040-\u30FF\u4E00-\u9FFF]/,
+  han: /[\u4E00-\u9FFF\u3400-\u4DBF]/
+};
+function scriptOf(code) {
+  const b = String(code || '').toLowerCase().split('-')[0];
+  if (b === 'ru' || b === 'uk' || b === 'be' || b === 'bg' || b === 'sr') return 'cyr';
+  if (b === 'el') return 'greek';
+  if (b === 'ja') return 'jp';
+  if (b === 'zh' || b === 'yue') return 'han';
+  return 'latin';
+}
+function plainText(html) {
+  return String(html == null ? '' : html)
+    .replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ').trim();
+}
+function nativeFrom(html, code) {
+  let p = plainText(html);
+  if (!p) return '';
+  p = p.replace(/[\uAC00-\uD7A3\u3131-\u318E]+/g, ' ');   /* 한국어 설명 제거 */
+  const test = SCRIPT[scriptOf(code)];
+  const out = p.split(/[\u3000-\u303F\uFF00-\uFFEF|]+/)
+    .map(c => c.replace(/\s+/g, ' ').replace(/\(\s*\)/g, ' ').trim())
+    .map(c => c.replace(/^[\s.,;:!?·…\-–—/()[\]{}'"“”‘’]+/, '').replace(/[\s.,;:!?·…\-–—/()[\]{}'"“”‘’]+$/, ''))
+    .filter(c => c && test.test(c));
+  if (!out.length) return '';
+  const t = out.join(' / ');
+  return t.length > 500 ? t.slice(0, 500).trim() : t;
+}
+
+function spkBtn(key) {
+  return `<button type="button" class="spk" data-say="${key}" aria-label="원어 듣기" title="듣기">🔊</button>`;
+}
+function spkSpan(key) {
+  return `<span class="spk" role="button" tabindex="0" data-say="${key}" aria-label="원어 듣기" title="듣기">🔊</span>`;
+}
+function bindSpeak(get) {
+  $$('[data-say]', app).forEach(el => {
+    const act = e => {
+      e.preventDefault(); e.stopPropagation();
+      const d = get(el.dataset.say);
+      if (d && d.t) TTS.say(d.t, d.c, el, d.n);
+    };
+    el.addEventListener('click', act);
+    el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') act(e); });
+  });
+}
+function rateBarHtml() {
+  const r = Number(SET.rate) || 1;
+  return `<div class="ratebar">
+    <span class="rlbl">🔊 배속</span>
+    ${RATES.map(x => `<button type="button" class="rate ${Math.abs(r - x) < 0.01 ? 'on' : ''}" data-rate="${x}"><b>${x}x</b>${x === 0.5 ? '<i>느리게</i>' : x === 1 ? '<i>보통</i>' : x === 2 ? '<i>빠르게</i>' : ''}</button>`).join('')}
+  </div>`;
+}
+function bindRate(onPick) {
+  $$('[data-rate]', app).forEach(b => {
+    b.onclick = () => {
+      SET.rate = Number(b.dataset.rate);
+      saveSet();
+      $$('[data-rate]', app).forEach(x => x.classList.toggle('on', x === b));
+      if (onPick) onPick();
+    };
+  });
+}
+function fillVoiceLine(box, code, sample) {
+  if (!box) return;
+  const name = CODE_KO[code] || code;
+  box.innerHTML = `<button type="button" class="btn plain sm" data-voice="1">🔊 ${esc(name)} 음성 확인</button>
+    <span class="vstat">음성 상태 확인 중…</span>`;
+  const btn = $('[data-voice]', box), stat = $('.vstat', box);
+  btn.onclick = () => TTS.say(sample || name, code, btn, name);
+  if (!TTS.supported) { stat.textContent = '이 브라우저는 음성 읽기를 지원하지 않아요'; stat.classList.add('no'); return; }
+  TTS.whenReady(() => {
+    if (!box.isConnected || !stat.isConnected) return;
+    if (!TTS.ready) { stat.textContent = '음성 목록을 불러오는 중…'; stat.className = 'vstat'; return; }
+    if (TTS.has(code)) { stat.textContent = `기기에 ${name} 음성 있음`; stat.className = 'vstat ok'; }
+    else { stat.textContent = `기기에 ${name} 음성 없음 — 설정에서 음성 데이터를 받으면 들려요`; stat.className = 'vstat no'; }
+  });
+}
 
 /* ------------------------------------------------------------------ 유틸 */
 function esc(s) {
@@ -138,6 +358,7 @@ function addStats(answered, correct) {
 let state = { tab: 'grammar', quiz: null, setup: {} };
 
 function go(tab) {
+  TTS.stop();
   state.tab = tab;
   state.quiz = null;
   $$('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
@@ -155,6 +376,7 @@ function loading(msg) { app.innerHTML = `<div class="loading">${esc(msg || '불�
 
 /* ================================================================== QUIZ 엔진 */
 function startQuiz(quiz) {
+  TTS.stop();
   state.quiz = { title: quiz.title, mode: quiz.mode, items: quiz.items, idx: 0, answers: [], revealed: false, picked: -1 };
   renderQuiz();
   window.scrollTo(0, 0);
@@ -176,9 +398,10 @@ function renderQuiz() {
         if (i === it.correct) cls += ' correct';
         else if (i === q.picked) cls += ' wrong';
       }
-      return `<button class="${cls}" data-opt="${i}" ${q.revealed ? 'disabled' : ''}>
+      return `<button class="${cls}" data-opt="${i}">
         <span class="k">${'ABCD'[i]}</span>
         <span class="v">${o.html}${o.note ? `<em>${o.note}</em>` : ''}</span>
+        ${o.say && o.say.t ? spkSpan('o:' + i) : ''}
       </button>`;
     }).join('')}</div>`;
   }
@@ -187,11 +410,11 @@ function renderQuiz() {
   if (q.revealed) {
     const a = it.kind === 'mc' ? it.opts[it.correct].html : it.answer;
     body = `<div class="answerbox">
-        <div class="lbl">정답</div>
+        <div class="lbl">정답${it.sayAnswer && it.sayAnswer.t ? spkBtn('a') : ''}</div>
         <div class="body">${a}</div>
         ${it.why ? `<div class="why">${it.why}</div>` : ''}
       </div>`;
-    if (it.extra) body += `<div class="note-line">${it.extra}</div>`;
+    if (it.extra) body += `<div class="note-line">${it.extra}${it.sayExtra && it.sayExtra.t ? spkBtn('x') : ''}</div>`;
     if (it.kind === 'self') {
       body += `<div class="qfoot">
         <button class="btn green" data-self="1">맞았어요</button>
@@ -209,8 +432,9 @@ function renderQuiz() {
       <span class="pct mono">${q.idx + 1} / ${q.items.length} · 정답 ${q.answers.filter(Boolean).length}</span>
     </div>
     <div class="progress"><i style="width:${pct}%"></i></div>
+    ${rateBarHtml()}
     <div class="card">
-      <div class="qtext">${it.prompt}</div>
+      <div class="qtext">${it.prompt}${it.sayPrompt && it.sayPrompt.t ? spkBtn('p') : ''}</div>
       ${it.sub ? `<div class="qsub">${it.sub}</div>` : ''}
       ${opts}
       ${body}
@@ -219,6 +443,9 @@ function renderQuiz() {
   </div>`;
 
   $$('[data-opt]', app).forEach(b => b.onclick = () => pickOption(Number(b.dataset.opt)));
+  bindSpeak(k => k === 'p' ? it.sayPrompt : k === 'a' ? it.sayAnswer : k === 'x' ? it.sayExtra
+    : (it.opts && it.opts[Number(k.slice(2))] ? it.opts[Number(k.slice(2))].say : null));
+  bindRate(() => { const d = (it.sayPrompt && it.sayPrompt.t) ? it.sayPrompt : (it.opts || []).map(o => o.say).find(x => x && x.t); if (d) TTS.say(d.t, d.c, null, d.n); });
   const rv = $('[data-reveal]', app); if (rv) rv.onclick = () => { q.revealed = true; renderQuiz(); };
   const nx = $('[data-next]', app); if (nx) nx.onclick = nextQuestion;
   $$('[data-self]', app).forEach(b => b.onclick = () => selfGrade(b.dataset.self === '1'));
@@ -228,6 +455,7 @@ function renderQuiz() {
 function pickOption(i) {
   const q = state.quiz, it = q.items[q.idx];
   if (q.revealed) return;
+  TTS.stop();
   q.picked = i;
   q.revealed = true;
   const ok = i === it.correct;
@@ -250,6 +478,7 @@ function selfGrade(ok) {
 
 function nextQuestion() {
   const q = state.quiz;
+  TTS.stop();
   q.idx += 1; q.revealed = false; q.picked = -1;
   renderQuiz();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -259,22 +488,25 @@ function nextQuestion() {
 function payloadOf(it) {
   if (it.kind === 'card') {
     return { key: it.key, kind: 'card', title: it.title || '', prompt: it.front.html,
-      answer: it.back.html, opts: [], correct: -1, why: '', extra: '', sub: '' };
+      answer: it.back.html, opts: [], correct: -1, why: '', extra: '', sub: '',
+      sayF: (it.front && it.front.say) || null, sayB: (it.back && it.back.say) || null };
   }
   return {
     key: it.key || (it.prompt + '|' + (it.answer || '')).slice(0, 120),
     kind: it.kind, prompt: it.prompt, sub: it.sub || '', opts: it.opts || [],
     correct: it.correct == null ? -1 : it.correct, answer: it.answer || '',
-    why: it.why || '', extra: it.extra || '', title: it.title || ''
+    why: it.why || '', extra: it.extra || '', title: it.title || '',
+    sayP: it.sayPrompt || null, sayA: it.sayAnswer || null, sayX: it.sayExtra || null
   };
 }
 function itemFromPayload(p) {
   if (p.kind === 'card') {
     return { kind: 'card', title: p.title, key: p.key,
-      front: { html: p.prompt, note: '' }, back: { html: p.answer } };
+      front: { html: p.prompt, note: '', say: p.sayF || null }, back: { html: p.answer, say: p.sayB || null } };
   }
   return { kind: p.kind === 'self' ? 'self' : 'mc', prompt: p.prompt, sub: p.sub, opts: p.opts,
-    correct: p.correct, answer: p.answer, why: p.why, extra: p.extra, key: p.key, title: p.title };
+    correct: p.correct, answer: p.answer, why: p.why, extra: p.extra, key: p.key, title: p.title,
+    sayPrompt: p.sayP || null, sayAnswer: p.sayA || null, sayExtra: p.sayX || null };
 }
 
 function renderResult() {
@@ -339,18 +571,21 @@ function renderCard() {
   const pct = Math.round((q.idx / q.items.length) * 100);
   const front = it.front, back = it.back;
   const reveal = q.cardShown;
+  const sideSay = reveal ? back.say : front.say;
   app.innerHTML = `<div class="screen">
     <div class="qhead">
       <span class="badge">${esc(q.title)}</span>
       <span class="pct mono">${q.idx + 1} / ${q.items.length}</span>
     </div>
     <div class="progress"><i style="width:${pct}%"></i></div>
+    ${rateBarHtml()}
     <div class="flash">
       <div class="flashcard ${reveal ? 'flipped' : ''}" data-flip="1">
         <div>
           <div class="front-label">${reveal ? '뒤' : '앞'}</div>
           <div class="bigtext">${reveal ? back.html : front.html}</div>
           ${reveal ? '' : front.note || ''}
+          ${sideSay && sideSay.t ? `<div class="cardsay">${spkSpan('c')}</div>` : ''}
           <div class="hint">${reveal ? '카드를 눌러 앞면으로' : '카드를 눌러 뜻·발음 보기'}</div>
         </div>
       </div>
@@ -363,6 +598,8 @@ function renderCard() {
   </div>`;
   const fc = $('[data-flip]', app);
   fc.onclick = () => { q.cardShown = !q.cardShown; renderCard(); };
+  bindSpeak(k => k === 'c' ? (q.cardShown ? back.say : front.say) : null);
+  bindRate(() => { const d = q.cardShown ? back.say : front.say; if (d && d.t) TTS.say(d.t, d.c, null, d.n); });
   $$('[data-card]', app).forEach(b => b.onclick = () => {
     const ok = b.dataset.card === '1';
     q.answers.push(ok);
@@ -449,7 +686,8 @@ async function renderGrammarSetup() {
         <div class="chips" id="gN">${[10, 20, 30, 50].map(n => `<button class="chip ${s.n === n ? 'on' : ''}" data-n="${n}">${n}문제</button>`).join('')}</div>
       </div>
       <button class="btn" id="gStart">문법 문제 풀기</button>
-      <p class="subnote">정답·해설은 가이드 원문 그대로입니다.</p>
+      <div id="gVoice" class="voiceline"></div>
+      <p class="subnote">정답·해설은 가이드 원문 그대로입니다. 문제의 🔊 를 누르면 예문의 원어 부분만 읽어 줍니다.</p>
     </div>
 
     <div class="card">
@@ -482,10 +720,20 @@ async function renderGrammarSetup() {
 
   const partSel = $('#gPart');
   async function fillParts() {
-    const data = await DATA.lingq(g.key);
+    const data = await DATA.lingq(s.guide);
     const parts = data.parts;
     partSel.innerHTML = `<option value="-1">전체 (${parts.reduce((a, p) => a + p.questions.length, 0)}문항)</option>` +
       parts.map((p, i) => `<option value="${i}" ${s.part === i ? 'selected' : ''}>${esc(p.part)} ${esc(p.title)} (${p.questions.length})</option>`).join('');
+    const gcode = GUIDE_CODE[s.guide] || 'en-GB';
+    let sample = '';
+    for (const p of parts) {
+      for (const q of p.questions) {
+        sample = nativeFrom(q.q, gcode) || nativeFrom(q.a, gcode);
+        if (sample) break;
+      }
+      if (sample) break;
+    }
+    fillVoiceLine($('#gVoice'), gcode, sample.slice(0, 90) || CODE_KO[gcode]);
   }
   await fillParts();
   $('#gGuide').onchange = e => { s.guide = e.target.value; s.part = -1; fillParts(); };
@@ -505,15 +753,22 @@ async function renderGrammarSetup() {
     });
     if (!pool.length) return alert('이 파트에는 문제가 없어요.');
     const picked = sample(pool, s.n);
-    const items = picked.map(({ p, q, pi, qi }) => ({
+    const gcode = GUIDE_CODE[s.guide] || 'en-GB';
+    const gname = CODE_KO[gcode];
+    const items = picked.map(({ p, q, pi, qi }) => {
+      const sq = nativeFrom(q.q, gcode), sa = nativeFrom(q.a, gcode);
+      return {
       kind: 'self',
       title: data.label,
       prompt: `<div class="qtext" style="font-size:16px">${rich(q.q)}</div>`,
       sub: `<span style="color:var(--ink3)">${esc(p.part)} · ${esc(p.title)}</span>`,
       answer: `<div class="answers-inline">${rich(q.a)}</div>`,
       why: q.why ? rich(q.why) : '',
+      sayPrompt: sq ? { t: sq, c: gcode, n: gname } : null,
+      sayAnswer: sa ? { t: sa, c: gcode, n: gname } : null,
       key: `${s.guide}:${pi}:${qi}`
-    }));
+      };
+    });
     lastBuilder = runGrammar;
     startQuiz({ title: `${data.label} 문법`, mode: 'gram', items });
   };
@@ -535,6 +790,7 @@ async function renderGrammarSetup() {
       return out;
     };
     const showEn = ![2, 3, 11].includes(s.lang);
+    const vcode = LANG_CODE[s.lang] || 'en';
     const items = picked.map(i => {
       const r = rows[i];
       const verbEn = r[1], verbKo = r[2], tense = r[3], person = r[4], en = r[5], ko = r[6];
@@ -556,8 +812,10 @@ async function renderGrammarSetup() {
         title: `${s.vol}권 · ${lname}`,
         prompt: `<div class="qtext"><span class="big">${esc(showEn ? en : ko)}</span></div>`,
         sub: `<b>${esc(verbEn)}</b> ${esc(verbKo)} · ${esc(tense)} · ${esc(person)} — ${esc(lname)}로?`,
-        opts: optsRaw.map(j => ({ html: `<b>${esc(lang[j][0])}</b>`, note: esc(pronText(lang[j][1])) })),
+        sayPrompt: showEn ? { t: en, c: 'en-GB', n: '영어' } : null,
+        opts: optsRaw.map(j => ({ html: `<b>${esc(lang[j][0])}</b>`, note: esc(pronText(lang[j][1])), say: { t: lang[j][0], c: vcode, n: lname } })),
         correct: optsRaw.indexOf(i),
+        sayAnswer: { t: correct, c: vcode, n: lname },
         why: '',
         key: `v${s.vol}:${s.lang}:${i}`
       };
@@ -639,7 +897,8 @@ async function renderWordsSetup() {
         <div class="switch"><span>중국어 성조 · 병음 보기</span><input type="checkbox" id="setTone" ${SET.tone ? 'checked' : ''}></div>
       </div>
       <button class="btn" id="wStart">단어 테스트 시작</button>
-      <p class="subnote">주제를 고르지 않으면 범위 전체에서 무작위로 나옵니다.</p>
+      <div id="wVoice" class="voiceline"></div>
+      <p class="subnote">주제를 고르지 않으면 범위 전체에서 무작위로 나옵니다. 테스트 중 🔊 를 누르면 원어를 들고, 0.5x~2x 배속을 고를 수 있어요.</p>
     </div>
   </div>`;
 
@@ -656,7 +915,12 @@ async function renderWordsSetup() {
   $('#wSearch').oninput = e => { s.search = e.target.value; fillGroups(); };
   groupSel.onchange = e => { s.group = Number(e.target.value); };
   $('#wBatch').onchange = e => { s.batch = Number(e.target.value); };
-  $('#wLang').onchange = e => { s.lang = Number(e.target.value); };
+  $('#wLang').onchange = e => { s.lang = Number(e.target.value); fillVoice(); };
+  const fillVoice = () => {
+    const l = meta.langs.find(x => x.no === s.lang) || {};
+    fillVoiceLine($('#wVoice'), LANG_CODE[s.lang], l.native || l.ko);
+  };
+  fillVoice();
   $$('#wSrc .chip').forEach(c => c.onclick = () => { s.src = c.dataset.v; $$('#wSrc .chip').forEach(x => x.classList.toggle('on', x === c)); });
   $$('#wMode .chip').forEach(c => c.onclick = () => {
     s.mode = c.dataset.v; $$('#wMode .chip').forEach(x => x.classList.toggle('on', x === c));
@@ -685,6 +949,8 @@ async function renderWordsSetup() {
       if (pool.length < 4) { alert('문제를 만들 수 없어요. 범위를 넓혀 주세요.'); return; }
       const picked = sample(pool, s.n);
       const lname = (meta.langs.find(l => l.no === s.lang) || {}).ko || '';
+      const wcode = LANG_CODE[s.lang] || '';
+      const sayOf = t => ({ t: t, c: wcode, n: lname });
       let quizItems;
       if (s.mode === 'card') {
         quizItems = picked.map(i => {
@@ -694,7 +960,7 @@ async function renderWordsSetup() {
             kind: 'card',
             title: `${lname}`,
             front: { html: `${esc(ko)}`, note: `<div class="hint">${esc(en)}</div>` },
-            back: { html: `${esc(nat)}${pronLine(pron)}<div class="trans">${esc(ko)}</div>` },
+            back: { html: `${esc(nat)}${pronLine(pron)}<div class="trans">${esc(ko)}</div>`, say: sayOf(nat) },
             key: `w:${s.lang}:${i}`
           };
         });
@@ -715,8 +981,9 @@ async function renderWordsSetup() {
             title: `${lname} · 뜻 → 원어`,
             prompt: `<div class="qtext"><span class="big">${esc(ko)}</span></div>`,
             sub: `<b>${esc(lname)}</b>로 무엇이라고 할까요?${showEn && en && en.toLowerCase() !== nat.toLowerCase() ? ` <span style="color:var(--ink3)">(${esc(en)})</span>` : ''}`,
-            opts: optsRaw.map(o => ({ html: `<b>${esc(lang[o.j][0])}</b>`, note: pronText(lang[o.j][1]) ? esc(pronText(lang[o.j][1])) : '' })),
+            opts: optsRaw.map(o => ({ html: `<b>${esc(lang[o.j][0])}</b>`, note: pronText(lang[o.j][1]) ? esc(pronText(lang[o.j][1])) : '', say: sayOf(lang[o.j][0]) })),
             correct: correctIdx,
+            sayAnswer: sayOf(nat),
             why: '',
             extra: '',
             key: `w:${s.lang}:${i}`
@@ -730,6 +997,7 @@ async function renderWordsSetup() {
             title: `${lname} · 원어 → 뜻`,
             prompt: `<div class="qtext"><span class="big">${esc(nat)}</span></div>`,
             sub: `${pronLine(pron)} ${esc(lname)} — 뜻은?`,
+            sayPrompt: sayOf(nat),
             opts: optsRaw.map(o => ({ html: esc(items[o.j][2]) })),
             correct: correctIdx,
             why: '',
@@ -803,6 +1071,8 @@ async function renderSentSetup() {
         <div class="switch"><span>중국어 성조 · 병음 보기</span><input type="checkbox" id="sSetTone" ${SET.tone ? 'checked' : ''}></div>
       </div>
       <button class="btn" id="sStart">문장 테스트 시작</button>
+      <div id="sVoice" class="voiceline"></div>
+      <p class="subnote">테스트 중 🔊 를 누르면 원어 문장을 읽어 주고, 0.5x~2x 배속을 고를 수 있어요.</p>
     </div>
   </div>`;
 
@@ -827,7 +1097,12 @@ async function renderSentSetup() {
   fillGroups();
   $('#sSearch').oninput = e => { s.search = e.target.value; fillGroups(); };
   groupSel.onchange = e => { s.group = Number(e.target.value); };
-  $('#sLang').onchange = e => { s.lang = Number(e.target.value); };
+  $('#sLang').onchange = e => { s.lang = Number(e.target.value); fillVoice(); };
+  const fillVoice = () => {
+    const l = meta.langs.find(x => x.no === s.lang) || {};
+    fillVoiceLine($('#sVoice'), LANG_CODE[s.lang], l.native || l.ko);
+  };
+  fillVoice();
   $$('#sMode .chip').forEach(c => c.onclick = () => { s.mode = c.dataset.v; $$('#sMode .chip').forEach(x => x.classList.toggle('on', x === c)); $('#sDirBox').classList.toggle('hidden', s.mode === 'card'); });
   $$('#sDir .chip').forEach(c => c.onclick = () => { s.dir = c.dataset.v; $$('#sDir .chip').forEach(x => x.classList.toggle('on', x === c)); });
   $$('#sN .chip').forEach(c => c.onclick = () => { s.n = Number(c.dataset.n); $$('#sN .chip').forEach(x => x.classList.toggle('on', x === c)); });
@@ -841,6 +1116,9 @@ async function renderSentSetup() {
       const lang = await DATA.vocabLang(s.lang);
       const lname = (meta.langs.find(l => l.no === s.lang) || {}).ko || '';
       const showEn = ![2, 3, 11].includes(s.lang);
+      const scode = LANG_CODE[s.lang] || '';
+      const sayOf = t => (t ? { t: t, c: scode, n: lname } : null);
+      const sayEn = t => (t ? { t: t, c: 'en-GB', n: '영어' } : null);
       const pool = items.map((it, i) => ({ it, i })).filter(o => o.it[4] && (s.group < 0 || o.it[1] === s.group));
       if (pool.length < 4) { alert('문장이 부족해요. 주제를 넓혀 주세요.'); return; }
       // 너무 비슷한 뜻(같은 한국어) 중복 제거
@@ -856,7 +1134,7 @@ async function renderSentSetup() {
             kind: 'card',
             title: lname,
             front: { html: esc(ko), note: `<div class="hint">${esc(en)}</div>` },
-            back: { html: `${esc(nat)}${pronLine(pron)}<div class="trans">${esc(en)}</div><div class="trans" style="font-size:14px;color:var(--ink2)">${esc(ko)}</div>` },
+            back: { html: `${esc(nat)}${pronLine(pron)}<div class="trans">${esc(en)}</div><div class="trans" style="font-size:14px;color:var(--ink2)">${esc(ko)}</div>`, say: sayOf(nat) },
             key: `s:${s.lang}:${i}`
           };
         });
@@ -876,9 +1154,11 @@ async function renderSentSetup() {
             kind: 'mc', title: '뜻 → 영어',
             prompt: `<div class="qtext">${esc(ko)}</div>`,
             sub: '이 뜻에 맞는 영어 문장은?',
-            opts: optsRaw.map(o => ({ html: esc(items[o.i][3]) })),
+            opts: optsRaw.map(o => ({ html: esc(items[o.i][3]), say: sayEn(items[o.i][3]) })),
             correct: correctIdx, why: '',
+            sayAnswer: sayEn(en),
             extra: (showEn && pronLine(pron)) ? `<b>${esc(nat)}</b> ${pronLine(pron)}` : '',
+            sayExtra: (showEn && pronLine(pron)) ? sayOf(nat) : null,
             key: `s:${s.lang}:${i}`
           };
         }
@@ -890,9 +1170,11 @@ async function renderSentSetup() {
             kind: 'mc', title: '영어 → 뜻',
             prompt: `<div class="qtext" style="font-size:17px">${esc(en)}</div>`,
             sub: '이 문장의 뜻은?',
+            sayPrompt: sayEn(en),
             opts: optsRaw.map(o => ({ html: esc(items[o.i][2]) })),
             correct: correctIdx, why: '',
             extra: pronLine(pron) ? `${esc(nat)} ${pronLine(pron)}` : '',
+            sayExtra: pronLine(pron) ? sayOf(nat) : null,
             key: `s:${s.lang}:${i}`
           };
         }
@@ -904,8 +1186,9 @@ async function renderSentSetup() {
           kind: 'mc', title: `뜻 → ${lname}`,
           prompt: `<div class="qtext">${esc(ko)}</div>`,
           sub: `${showEn ? `<b>${esc(en)}</b> — ` : ''}${esc(lname)}로는?`,
-          opts: optsRaw.map(o => ({ html: `<b>${esc((lang[o.i] || [''])[0])}</b>`, note: esc(pronText((lang[o.i] || [])[1])) })),
+          opts: optsRaw.map(o => ({ html: `<b>${esc((lang[o.i] || [''])[0])}</b>`, note: esc(pronText((lang[o.i] || [])[1])), say: sayOf((lang[o.i] || [''])[0]) })),
           correct: correctIdx, why: '',
+          sayAnswer: sayOf(nat),
           extra: '',
           key: `s:${s.lang}:${i}`
         };
