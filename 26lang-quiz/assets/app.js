@@ -878,7 +878,7 @@ async function renderSentSetup() {
             sub: '이 뜻에 맞는 영어 문장은?',
             opts: optsRaw.map(o => ({ html: esc(items[o.i][3]) })),
             correct: correctIdx, why: '',
-            extra: pronLine(pron) ? `<b>${esc(nat)}</b> ${pronLine(pron)}` : '',
+            extra: (showEn && pronLine(pron)) ? `<b>${esc(nat)}</b> ${pronLine(pron)}` : '',
             key: `s:${s.lang}:${i}`
           };
         }
@@ -906,7 +906,7 @@ async function renderSentSetup() {
           sub: `${showEn ? `<b>${esc(en)}</b> — ` : ''}${esc(lname)}로는?`,
           opts: optsRaw.map(o => ({ html: `<b>${esc((lang[o.i] || [''])[0])}</b>`, note: esc(pronText((lang[o.i] || [])[1])) })),
           correct: correctIdx, why: '',
-          extra: pronLine(pron) ? `${esc(nat)} ${pronLine(pron)}` : '',
+          extra: '',
           key: `s:${s.lang}:${i}`
         };
       });

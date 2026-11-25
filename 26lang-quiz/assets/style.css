@@ -168,6 +168,7 @@ select { background-image: linear-gradient(45deg, transparent 50%, var(--ink3) 5
 
 .answerbox { margin-top: 14px; border-radius: 13px; padding: 14px; background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); }
 .answerbox .lbl { font-size: 11.5px; font-weight: 800; color: var(--accent); letter-spacing: .04em; margin-bottom: 6px; }
+.answerbox .body .pron { display: block; margin-top: 6px; }
 .answerbox .body { font-size: 15px; line-height: 1.5; word-break: keep-all; white-space: pre-line; }
 .answerbox .why { white-space: pre-line; margin-top: 10px; padding-top: 10px; border-top: 1px dashed color-mix(in srgb, var(--accent) 30%, transparent); font-size: 13.5px; color: var(--ink2); }
 .answerbox .why::before { content: "해설 "; font-weight: 800; color: var(--accent); font-size: 11.5px; }
