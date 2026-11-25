@@ -176,13 +176,13 @@
     return { voice: best, exact: bestRank === 0, rank: bestRank };
   }
 
-  /* 낭독용 문자열 정리: 괄호 설명·성별 표시·둘째 어형을 걷어내고 첫 어형만 읽는다 */
+  /* 낭독용 문자열 정리: 괄호 설명·성별 표시만 걷어내고 남성/여성/중성 어형을 모두 순서대로 읽는다 */
   function speechText(raw) {
     var t = String(raw || '');
     t = t.replace(/\([^)]*\)/g, ' ');
     t = t.replace(/\[[^\]]*\]/g, ' ');
-    t = t.split(' / ')[0];
-    t = t.replace(/[·|]/g, ' ').replace(/\s+/g, ' ').trim();
+    t = t.replace(/\s*\/\s*/g, ', ');
+    t = t.replace(/[·|]/g, ', ').replace(/\s+/g, ' ').trim();
     t = t.replace(/[.,;:]+$/, '');
     return t;
   }
