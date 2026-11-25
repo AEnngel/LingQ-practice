@@ -577,7 +577,7 @@ async function renderWordsSetup() {
   try { [meta, items] = await Promise.all([DATA.vocabMeta(), DATA.vocabItems()]); }
   catch (e) { app.innerHTML = `<div class="card"><h2>데이터를 불러오지 못했어요</h2><p class="desc">${esc(e.message)}</p></div>`; return; }
   const s = state.setup.words || (state.setup.words = {
-    lang: 6, src: 'all', group: -1, n: 20, mode: 'mc', dir: 'ko2nat', search: ''
+    lang: 6, src: 'all', group: -1, batch: -1, n: 20, mode: 'mc', dir: 'ko2nat', search: ''
   });
   const langs = meta.langs.filter(l => l.no !== 1);
   const total = meta.counts.items;
@@ -606,6 +606,10 @@ async function renderWordsSetup() {
           <button class="chip ${s.src === 'd' ? 'on' : ''}" data-v="d">보내주신 단어</button>
           <button class="chip ${s.src === 's' ? 'on' : ''}" data-v="s">IELTS·TOEFL 보완</button>
         </div>
+      </div>
+      <div class="field">
+        <label>차수 (보낸 묶음)</label>
+        <select id="wBatch"><option value="-1">전체 차수 (${total.toLocaleString()})</option>${meta.batches.map(b => `<option value="${b.n}" ${s.batch === b.n ? 'selected' : ''}>${b.n}차 · ${b.items}개${b.src === 's' ? ' · IELTS/TOEFL 보완' : ''}</option>`).join('')}</select>
       </div>
       <div class="field">
         <label>주제 (선택)</label>
@@ -651,6 +655,7 @@ async function renderWordsSetup() {
   fillGroups();
   $('#wSearch').oninput = e => { s.search = e.target.value; fillGroups(); };
   groupSel.onchange = e => { s.group = Number(e.target.value); };
+  $('#wBatch').onchange = e => { s.batch = Number(e.target.value); };
   $('#wLang').onchange = e => { s.lang = Number(e.target.value); };
   $$('#wSrc .chip').forEach(c => c.onclick = () => { s.src = c.dataset.v; $$('#wSrc .chip').forEach(x => x.classList.toggle('on', x === c)); });
   $$('#wMode .chip').forEach(c => c.onclick = () => {
@@ -673,6 +678,7 @@ async function renderWordsSetup() {
         if (s.src === 'd' && meta.batches.find(x => x.n === b).src !== 'd') return;
         if (s.src === 's' && meta.batches.find(x => x.n === b).src !== 's') return;
         if (s.group >= 0 && gi !== s.group) return;
+        if (s.batch > 0 && b !== s.batch) return;
         if (!lang[i] || !lang[i][0]) return;
         pool.push(i);
       });
@@ -821,6 +827,7 @@ async function renderSentSetup() {
   fillGroups();
   $('#sSearch').oninput = e => { s.search = e.target.value; fillGroups(); };
   groupSel.onchange = e => { s.group = Number(e.target.value); };
+  $('#wBatch').onchange = e => { s.batch = Number(e.target.value); };
   $('#sLang').onchange = e => { s.lang = Number(e.target.value); };
   $$('#sMode .chip').forEach(c => c.onclick = () => { s.mode = c.dataset.v; $$('#sMode .chip').forEach(x => x.classList.toggle('on', x === c)); $('#sDirBox').classList.toggle('hidden', s.mode === 'card'); });
   $$('#sDir .chip').forEach(c => c.onclick = () => { s.dir = c.dataset.v; $$('#sDir .chip').forEach(x => x.classList.toggle('on', x === c)); });
