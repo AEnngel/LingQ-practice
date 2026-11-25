@@ -387,3 +387,45 @@ select { background-image: linear-gradient(45deg, transparent 50%, var(--ink3) 5
 .srcline { font-size: 11.5px; color: var(--accent); font-weight: 700; }
 .prline { color: var(--ink3); font-size: 12.5px; }
 .answerbox .body .pron { display: block; margin-top: 6px; font-size: 13px; color: var(--ink2); }
+
+/* 소리 진단 · 테스트 */
+.diagchip {
+  margin-left: auto; flex: 0 0 auto; cursor: pointer;
+  border: 1.5px solid var(--line); background: var(--card); color: var(--ink2);
+  border-radius: 999px; padding: 6px 11px; font-size: 11.5px; font-weight: 700;
+  font-family: inherit; line-height: 1.2;
+}
+.diagbtn { border-color: var(--gold); color: var(--gold); }
+.vdiag {
+  position: fixed; inset: 0; z-index: 9500; display: flex; align-items: flex-end;
+  justify-content: center; padding: 14px; background: rgba(10, 16, 28, .55);
+  overflow: auto;
+}
+.vdiagcard {
+  width: 100%; max-width: 440px; max-height: 84vh; overflow: auto;
+  background: var(--card); color: var(--ink); border-radius: 16px;
+  padding: 16px 16px 14px; box-shadow: var(--shadow);
+}
+.vdiagcard h3 { margin: 0 0 10px; font-size: 16px; }
+.vrow { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px dashed var(--line); font-size: 12.5px; }
+.vrow span { color: var(--ink2); font-weight: 600; }
+.vrow b { text-align: right; font-weight: 800; }
+.vrow b.bad { color: var(--red); }
+.vrow em { font-style: normal; color: var(--ink3); font-size: 11px; }
+.vsub { margin: 12px 0 6px; font-size: 11.5px; font-weight: 800; color: var(--ink3); letter-spacing: .02em; }
+.vlist { display: flex; flex-wrap: wrap; gap: 5px; }
+.vtag { font-size: 11px; font-weight: 700; background: var(--accent-soft); color: var(--ink); border-radius: 999px; padding: 3px 8px; }
+.vtag.bad { background: var(--red-soft); color: var(--red); }
+.vtag em { font-style: normal; color: var(--ink3); font-size: 10px; }
+.vgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; }
+.vgrid .vrow { font-size: 12px; }
+.vnote, .vgood { font-size: 11.5px; font-weight: 700; margin: 6px 0 0; }
+.vnote { color: var(--gold); }
+.vgood { color: var(--green); }
+.vhint { font-size: 11.5px; color: var(--ink2); line-height: 1.55; margin: 12px 0 4px; }
+.vfoot { display: flex; gap: 8px; margin-top: 10px; }
+.vfoot .btn { flex: 1 1 0; }
+@media (max-width: 390px) {
+  .diagchip { font-size: 11px; padding: 5px 9px; }
+  .vgrid { grid-template-columns: 1fr; }
+}

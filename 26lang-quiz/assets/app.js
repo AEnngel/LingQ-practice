@@ -105,25 +105,71 @@ const TTS = (() => {
   }
 
   const norm = c => String(c || '').toLowerCase().replace(/_/g, '-');
+  /* iOS 구형 로봇 성우(귀신소리) 차단 + 자연스러운 음성 우대 */
+  const VOICE_GOOD = ['enhanced', 'premium', 'siri', 'natural', 'neural', 'online', 'google'];
+  const VOICE_BAD = ['compact', 'eloquence', 'espeak', 'pico'];
+  const VOICE_ROBOT = ['sandy', 'shelley', 'eddy', 'flo', 'grandma', 'grandpa', 'reed', 'rocko',
+    'albert', 'bad news', 'bahh', 'bells', 'boing', 'bubbles', 'cellos', 'good news', 'jester',
+    'organ', 'superstar', 'trinoids', 'whisper', 'wobble', 'zarvox', 'fred', 'junior', 'ralph',
+    'kathy', 'karen', 'eloquence', 'compact', 'espeak', 'pico'];
+  const UK_NAMES = ['daniel', 'oliver', 'arthur', 'kate', 'serena', 'martha', 'stephanie',
+    'libby', 'ryan', 'sonia', 'george', 'hazel', 'susan', 'maisie', 'google uk english'];
+  function vTokens(name) {
+    return String(name || '').toLowerCase().replace(/[^a-z\u00a0-\u024f]+/g, ' ').trim().split(' ').filter(Boolean);
+  }
+  function isRobot(name) {
+    const t = vTokens(name);
+    if (!t.length) return false;
+    const joined = ' ' + t.join(' ') + ' ';
+    for (const k of VOICE_ROBOT) {
+      if (k.indexOf(' ') !== -1) { if (joined.indexOf(' ' + k + ' ') !== -1) return true; }
+      else if (t.indexOf(k) !== -1) return true;
+    }
+    return false;
+  }
+  function isUkName(name) {
+    const n = String(name || '').toLowerCase();
+    return UK_NAMES.some(k => n.indexOf(k) !== -1);
+  }
+  function voiceQuality(name) {
+    const n = String(name || '').toLowerCase();
+    let sc = 0;
+    if (isRobot(n)) sc -= 100;
+    for (const k of VOICE_GOOD) if (n.indexOf(k) !== -1) sc += 10;
+    for (const k of VOICE_BAD) if (n.indexOf(k) !== -1) sc -= 30;
+    return sc;
+  }
   function candidates(code) {
     const list = [code].concat(CODE_FALLBACK[code] || []);
     const base = String(code || '').split('-')[0];
     if (base && base !== code) list.push(base);
     return list.map(norm).filter(Boolean);
   }
-  function find(code) {
+  /* 목표 언어에 맞는 음성 중 로봇 성우를 피하고 자연 음성을 고른다 */
+  function pick(code) {
     if (!ready) refresh();
     if (!voices.length) return null;
     const cands = candidates(code);
-    for (const c of cands) {
-      const exact = voices.find(v => norm(v.lang) === c);
-      if (exact) return exact;
+    const base = norm(code);
+    let best = null, bestScore = -1e9, bestRank = 99;
+    for (const v of voices) {
+      const vl = norm(v.lang);
+      let rank = -1;
+      for (let i = 0; i < cands.length; i++) {
+        const c = cands[i];
+        if (vl === c || vl.indexOf(c + '-') === 0) { rank = i; break; }
+      }
+      if (rank < 0) continue;
+      let sc = 100 - rank * 22 + voiceQuality(v.name);
+      if (base.indexOf('en') === 0 && isUkName(v.name)) sc += 8;
+      if (sc > bestScore) { bestScore = sc; best = v; bestRank = rank; }
     }
-    for (const c of cands) {
-      const pref = voices.find(v => norm(v.lang).startsWith(c + '-'));
-      if (pref) return pref;
-    }
-    return null;
+    if (!best) return null;
+    return { voice: best, exact: bestRank === 0, rank: bestRank, score: bestScore };
+  }
+  function find(code) {
+    const p = pick(code);
+    return p ? p.voice : null;
   }
   function stop() {
     if (curEl) curEl.classList.remove('playing');
@@ -165,7 +211,9 @@ const TTS = (() => {
     return true;
   }
   return {
-    supported, say, stop, find,
+    supported, say, stop, find, pick,
+    list: () => voices.slice(),
+    count: () => voices.length,
     has: code => !!find(code),
     get ready() { return ready; },
     whenReady: cb => {
@@ -234,8 +282,22 @@ function rateBarHtml() {
   return `<div class="ratebar">
     <span class="rlbl">듣기 배속</span>
     ${RATES.map(x => `<button type="button" class="rate ${Math.abs(r - x) < 0.01 ? 'on' : ''}" data-rate="${x}"><b>${x}x</b>${x === 0.5 ? '<i>느리게</i>' : x === 1 ? '<i>보통</i>' : x === 2 ? '<i>빠르게</i>' : ''}</button>`).join('')}
+    <button type="button" class="diagchip" data-vdiag-bar="1">🩺 소리 진단</button>
   </div>`;
 }
+/* 지금 퀴즈의 언어 코드 (소리 진단이 이 언어로 테스트한다) */
+let curSayCode = '';
+function pickSayCode(items) {
+  for (const it of items || []) {
+    const d = it.say || it.sayPrompt || it.sayAnswer || it.sayExtra || null;
+    if (d && d.c) return d.c;
+  }
+  return '';
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-vdiag-bar]');
+  if (b) showVoiceDiag(curSayCode || 'en-GB');
+});
 function bindRate(onPick) {
   $$('[data-rate]', app).forEach(b => {
     b.onclick = () => {
@@ -249,16 +311,118 @@ function bindRate(onPick) {
 function fillVoiceLine(box, code, sample) {
   if (!box) return;
   const name = CODE_KO[code] || code;
-  box.innerHTML = `<button type="button" class="btn plain sm" data-voice="1">🔊 ${esc(name)} 음성 확인</button>
+  box.innerHTML = `<button type="button" class="btn plain sm" data-voice="1">🔊 ${esc(name)} 테스트</button>
+    <button type="button" class="btn plain sm diagbtn" data-vdiag="1">🩺 소리 진단</button>
     <span class="vstat">음성 상태 확인 중…</span>`;
-  const btn = $('[data-voice]', box), stat = $('.vstat', box);
-  btn.onclick = () => TTS.say(sample || name, code, btn, name);
+  const btn = $('[data-voice]', box), stat = $('.vstat', box), diag = $('[data-vdiag]', box);
+  btn.onclick = () => TTS.say(sample || sampleOf(code), code, btn, name);
+  if (diag) diag.onclick = () => showVoiceDiag(code);
   if (!TTS.supported) { stat.textContent = '이 브라우저는 음성 읽기를 지원하지 않아요'; stat.classList.add('no'); return; }
   TTS.whenReady(() => {
     if (!box.isConnected || !stat.isConnected) return;
     if (!TTS.ready) { stat.textContent = '음성 목록을 불러오는 중…'; stat.className = 'vstat'; return; }
-    if (TTS.has(code)) { stat.textContent = `기기에 ${name} 음성 있음`; stat.className = 'vstat ok'; }
-    else { stat.textContent = `기기에 ${name} 음성 없음 — 설정에서 음성 데이터를 받으면 들려요`; stat.className = 'vstat no'; }
+    const p = TTS.pick(code);
+    if (p) {
+      stat.textContent = `${name} 음성: ${p.voice.name} [${p.voice.lang}]`;
+      stat.className = 'vstat ok';
+    } else {
+      stat.textContent = `기기에 ${name} 음성 없음 — 설정에서 음성 데이터를 받으면 들려요`;
+      stat.className = 'vstat no';
+    }
+  });
+}
+
+/* ------------------------------------------------------ 소리 진단 · 테스트 */
+const VOICE_SAMPLE = {
+  'ko-KR': '안녕하세요. 목소리 테스트입니다.',
+  'en-GB': 'Hello. This is a voice test.',
+  'de-DE': 'Guten Tag. Das ist ein Stimmentest.',
+  'fr-FR': 'Bonjour. Ceci est un test de voix.',
+  'es-ES': 'Hola. Esta es una prueba de voz.',
+  'pt-PT': 'Olá. Este é um teste de voz.',
+  'it-IT': 'Ciao. Questa è una prova di voce.',
+  'la': 'Salve. Haec est probatio vocis.',
+  'nl-NL': 'Hallo. Dit is een stemtest.',
+  'sco': 'Hallo. This is a voice test.',
+  'ga-IE': 'Dia duit. Seo triail ghutha.',
+  'da-DK': 'Hej. Dette er en stemmetest.',
+  'nb-NO': 'Hei. Dette er en stemmetest.',
+  'sv-SE': 'Hej. Det här är ett rösttest.',
+  'is-IS': 'Halló. Þetta er raddpróf.',
+  'fi-FI': 'Hei. Tämä on äänitesti.',
+  'hu-HU': 'Szia. Ez egy hangteszt.',
+  'pl-PL': 'Cześć. To jest test głosu.',
+  'uk-UA': 'Привіт. Це тест голосу.',
+  'ru-RU': 'Привет. Это тест голоса.',
+  'el-GR': 'Γεια σας. Αυτό είναι ένα τεστ φωνής.',
+  'af-ZA': 'Hallo. Dit is ’n stemtoets.',
+  'ja-JP': 'こんにちは。声のテストです。',
+  'zh-CN': '你好。这是一个声音测试。',
+  'zh-HK': '你好。呢個係聲音測試。'
+};
+const DIAG_LANGS = [
+  ['en-GB', '영어'], ['de-DE', '독일어'], ['fr-FR', '프랑스어'], ['es-ES', '스페인어'],
+  ['pt-PT', '포르투갈어'], ['it-IT', '이탈리아어'], ['la', '라틴어'], ['nl-NL', '네덜란드어'],
+  ['ga-IE', '아일랜드어'], ['sv-SE', '스웨덴어'], ['fi-FI', '핀란드어'], ['hu-HU', '헝가리어'],
+  ['pl-PL', '폴란드어'], ['uk-UA', '우크라이나어'], ['ru-RU', '러시아어'], ['el-GR', '그리스어']
+];
+function sampleOf(code) { return VOICE_SAMPLE[code] || 'Hello. This is a voice test.'; }
+
+/* 현재 코드에 실제로 잡히는 목소리 요약 (버튼 옆 표시용) */
+function voiceLabel(code) {
+  if (!TTS.supported) return '이 브라우저는 음성 읽기 미지원';
+  if (!TTS.ready) return '목소리 불러오는 중…';
+  const p = TTS.pick(code);
+  if (!p) return '음성 없음';
+  return `🔊 ${p.voice.name} [${p.voice.lang}]`;
+}
+
+function showVoiceDiag(code) {
+  const old = document.getElementById('vdiag');
+  if (old) old.remove();
+  const total = TTS.count ? TTS.count() : 0;
+  const rows = [];
+  rows.push(`<div class="vrow"><span>기기 전체 목소리</span><b>${total}개</b></div>`);
+  if (code) {
+    const p = TTS.supported && TTS.ready ? TTS.pick(code) : null;
+    rows.push(`<div class="vrow"><span>${esc(CODE_KO[code] || code)} <em>${esc(code)}</em></span><b>${p ? esc(p.voice.name) + ' [' + esc(p.voice.lang) + ']' : '없음'}</b></div>`);
+    if (p && !p.exact) rows.push(`<div class="vnote">정확히 같은 언어 목소리가 없어 가까운 목소리로 읽어요.</div>`);
+    if (p && /enhanced|premium|natural|neural|siri|google/i.test(p.voice.name)) {
+      rows.push(`<div class="vgood">좋은 음성(고품질)이 잡혔습니다.</div>`);
+    }
+    const same = (TTS.list ? TTS.list() : []).filter(v => String(v.lang || '').toLowerCase().replace('_', '-').indexOf(code.split('-')[0]) === 0);
+    if (same.length) {
+      rows.push(`<div class="vsub">이 언어로 설치된 목소리 ${same.length}개</div>`);
+      rows.push('<div class="vlist">' + same.slice(0, 10).map(v => {
+        const robot = /sandy|shelley|eddy|flo|grandma|grandpa|reed|rocko|albert|bells|boing|bubbles|organ|whisper|zarvox|fred|ralph|kathy|karen|eloquence|compact|espeak|pico/i.test(v.name);
+        return `<span class="vtag${robot ? ' bad' : ''}">${esc(v.name)} <em>${esc(v.lang)}</em>${robot ? ' ⚠' : ''}</span>`;
+      }).join('') + '</div>');
+    } else {
+      rows.push('<div class="vnote">이 언어 목소리가 기기에 없습니다.</div>');
+    }
+  }
+  const summary = DIAG_LANGS.map(([c, ko]) => {
+    const p = TTS.supported && TTS.ready ? TTS.pick(c) : null;
+    return `<div class="vrow"><span>${ko}</span><b class="${p ? '' : 'bad'}">${p ? esc(p.voice.name) : '없음'}</b></div>`;
+  }).join('');
+  const box = document.createElement('div');
+  box.id = 'vdiag';
+  box.className = 'vdiag';
+  box.innerHTML = `<div class="vdiagcard" role="dialog" aria-label="소리 진단">
+    <h3>🩺 소리 진단</h3>
+    ${rows.join('')}
+    <div class="vsub">주요 언어에 잡히는 목소리</div>
+    <div class="vgrid">${summary}</div>
+    <p class="vhint">로봇·효과음 성우(⚠ 표시)는 자동으로 피합니다. 목소리가 없으면 아이폰 <b>설정 › 손쉬운 사용 › 말하기 콘텐츠 › 음성</b>에서 해당 언어를 받아 주세요.</p>
+    <div class="vfoot">
+      <button type="button" class="btn" data-vsay="1">🔊 테스트 듣기</button>
+      <button type="button" class="btn plain" data-vclose="1">닫기</button>
+    </div>
+  </div>`;
+  document.body.appendChild(box);
+  box.addEventListener('click', e => {
+    if (e.target === box || e.target.closest('[data-vclose]')) { box.remove(); return; }
+    if (e.target.closest('[data-vsay]')) TTS.say(sampleOf(code || 'en-GB'), code || 'en-GB', null, CODE_KO[code] || '');
   });
 }
 
@@ -414,6 +578,8 @@ function loading(msg) { app.innerHTML = `<div class="loading">${esc(msg || '불�
 /* ================================================================== QUIZ 엔진 */
 function startQuiz(quiz) {
   TTS.stop();
+  const sc = pickSayCode(quiz.items);
+  if (sc) curSayCode = sc;
   state.quiz = { title: quiz.title, mode: quiz.mode, items: quiz.items, idx: 0, answers: [], revealed: false, picked: -1 };
   renderQuiz();
   window.scrollTo(0, 0);
