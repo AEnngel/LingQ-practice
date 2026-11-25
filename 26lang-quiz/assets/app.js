@@ -59,9 +59,10 @@ const ORDER_HINT = {
   25: '주어 → 동사 → 목적어', 26: '주어 → 동사 → 목적어'
 };
 function orderHintOf(no) { return ORDER_HINT[no] || ''; }
-/* 타일 표시: 단어 (역할) */
-function tileHtml(word, role, cls, attr) {
-  const r = role ? ` <span class="role">(${esc(role)})</span>` : '';
+/* 타일 표시: 단어 (역할 · 뜻) */
+function tileHtml(word, role, cls, attr, mean) {
+  const bits = [role, mean].filter(Boolean).map(esc).join(' · ');
+  const r = bits ? ` <span class="role">(${bits})</span>` : '';
   return `<button class="${cls}" ${attr}>${esc(word)}${r}</button>`;
 }
 
@@ -697,7 +698,8 @@ function payloadOf(it) {
   }
   if (it.kind === 'order') {
     return { key: it.key, kind: 'order', title: it.title || '', prompt: it.prompt, sub: it.sub || '',
-      answer: it.answer, tiles: it.tiles || [], roles: it.roles || [], orderHint: it.orderHint || '',
+      answer: it.answer, tiles: it.tiles || [], roles: it.roles || [], meanings: it.meanings || [],
+      orderHint: it.orderHint || '',
       pron: it.pron || '', opts: [], correct: -1,
       why: it.why || '', extra: '', sayA: it.say || null };
   }
@@ -716,7 +718,8 @@ function itemFromPayload(p) {
   }
   if (p.kind === 'order') {
     return { kind: 'order', title: p.title, key: p.key, prompt: p.prompt, sub: p.sub,
-      answer: p.answer, tiles: p.tiles || [], roles: p.roles || [], orderHint: p.orderHint || '',
+      answer: p.answer, tiles: p.tiles || [], roles: p.roles || [], meanings: p.meanings || [],
+      orderHint: p.orderHint || '',
       pron: p.pron || '', why: p.why || '', say: p.sayA || null };
   }
   return { kind: p.kind === 'self' ? 'self' : 'mc', prompt: p.prompt, sub: p.sub, opts: p.opts,
@@ -837,8 +840,9 @@ function renderOrder() {
   const built = o.picked.map(i => it.tiles[i]).join(' ');
   const ok = norm(built) === norm(it.answer);
   const roleOf = i => (it.roles && it.roles[i]) || '';
+  const meanOf = i => (it.meanings && it.meanings[i]) || '';
   const pickedHtml = o.picked.length
-    ? o.picked.map((ti, pos) => tileHtml(it.tiles[ti], roleOf(ti), 'tile on', `data-unpick="${pos}"`)).join('')
+    ? o.picked.map((ti, pos) => tileHtml(it.tiles[ti], roleOf(ti), 'tile on', `data-unpick="${pos}"`, meanOf(ti))).join('')
     : `<span class="tile-ghost">단어를 차례로 눌러 보세요</span>`;
   const pool = it.tiles.map((t, i) => ({ t, i })).filter(x => !o.picked.includes(x.i));
 
@@ -857,7 +861,7 @@ function renderOrder() {
       ${it.prompt}
       ${it.sub ? `<div class="qsub">${it.sub}</div>` : ''}
       <div class="orderbuilt ${o.done ? (o.ok ? 'ok' : 'no') : ''}">${pickedHtml}</div>
-      <div class="tiles">${pool.map(x => tileHtml(x.t, roleOf(x.i), 'tile', `data-tile="${x.i}"`)).join('')}</div>
+      <div class="tiles">${pool.map(x => tileHtml(x.t, roleOf(x.i), 'tile', `data-tile="${x.i}"`, meanOf(x.i))).join('')}</div>
       ${o.done ? `
         <div class="answerbox">
           <div class="lbl">${o.ok ? '정답이에요 ✓' : '정답'}${it.say && it.say.t ? spkBtn('a') : ''}</div>
@@ -1189,11 +1193,12 @@ async function renderGrammarSetup() {
           while (order.map(i => o.t[i]).join(' ') === o.a && guard++ < 6) order = shuffle(order);
           const tiles = order.map(i => o.t[i]);
           const roles = order.map(i => (o.r && o.r[i]) || '');
+          const meanings = order.map(i => (o.m && o.m[i]) || '');
           return {
             kind: 'order', title: `${lname} · 문장 순서`,
             prompt: `<div class="qtext">${esc(o.ko)}</div>`,
             sub: `<span style="color:var(--ink3)">단어를 순서대로 눌러 ${esc(lname)} 문장을 만드세요.</span>`,
-            answer: o.a, tiles: tiles, roles: roles, orderHint: orderHintOf(s.glang),
+            answer: o.a, tiles: tiles, roles: roles, meanings: meanings, orderHint: orderHintOf(s.glang),
             pron: o.p || '', say: sayOf(o.a), why: '',
             key: `g:o:${s.glang}:${o.a}`
           };

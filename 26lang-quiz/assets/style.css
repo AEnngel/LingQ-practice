@@ -350,11 +350,15 @@ select { background-image: linear-gradient(45deg, transparent 50%, var(--ink3) 5
 .tile:active { filter: brightness(.95); }
 .tile.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .tile-ghost { font-size: 12.5px; color: var(--ink3); }
-/* 문장 순서: 단어(역할) 표시 · 어순 힌트 · 단어 소리 토글 */
-.tile { max-width: 100%; text-align: left; }
+/* 문장 순서: 단어 (역할 · 뜻) 표시 · 어순 힌트 · 단어 소리 토글 */
+.tile {
+  max-width: 100%; text-align: left;
+  display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 0 3px;
+  overflow-wrap: anywhere;
+}
 .tile .role {
-  margin-left: 2px; font-size: 10.5px; font-weight: 700; letter-spacing: -.02em;
-  color: var(--ink3); white-space: nowrap;
+  margin-left: 0; font-size: 10.5px; font-weight: 700; letter-spacing: -.02em;
+  color: var(--ink3); white-space: normal; overflow-wrap: anywhere;
 }
 .tile.on .role { color: rgba(255, 255, 255, .82); }
 .orderbar {
@@ -377,8 +381,8 @@ select { background-image: linear-gradient(45deg, transparent 50%, var(--ink3) 5
 .sndbtn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .sndbtn:active { transform: translateY(1px); }
 @media (max-width: 390px) {
-  .tile { padding: 8px 10px; font-size: 14px; }
-  .tile .role { font-size: 10px; }
+  .tile { padding: 7px 10px; font-size: 14px; line-height: 1.25; gap: 0 2px; }
+  .tile .role { font-size: 9.5px; }
   .ohint { font-size: 11px; padding: 4px 9px; }
   .sndbtn { font-size: 11px; padding: 5px 9px; }
 }
