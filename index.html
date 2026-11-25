@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>LingQ 미니 스토리 연습장 v12 — 1a~20c · 26개 언어</title>
+<title>LingQ 미니 스토리 연습장 v12 — 1a~21a · 30개 언어</title>
 <style>
   :root {
     --bg: #f8fafc;
@@ -215,6 +215,7 @@
         <button data-speed="1" class="active" onclick="setSpeed(1)">1.0x 보통</button>
         <button data-speed="1.25" onclick="setSpeed(1.25)">1.25x</button>
         <button data-speed="1.5" onclick="setSpeed(1.5)">1.5x 빠르게</button>
+        <button data-speed="2" title="언어별 기본 속도 × 2.0 (브라우저 한도 2.0에서 멈춤)" onclick="setSpeed(2)">2.0x</button>
       </div>
       <div style="display:flex; gap:6px; flex-wrap:wrap;">
         <button class="btn-primary" onclick="speakSentence()">🔊 듣기</button>
@@ -275,7 +276,7 @@
 <script>
 /* =========================================================
    LingQ 미니 스토리 연습장 v12
-   - 회차(1a~20c) 드롭다운 + stories/{id}.json 동적 로딩
+   - 회차(1a~21a) 드롭다운 + stories/{id}.json 동적 로딩
    - 배속 0.7/1.0/1.25/1.5 (카드·연속·비교·퀴즈 모두)
    - 전체 문장 연속 듣기 + 현재 문장 하이라이트
    - 언어 비교 카드마다 🔊 듣기
