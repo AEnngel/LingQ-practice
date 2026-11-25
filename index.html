@@ -912,6 +912,8 @@ function refreshQuizVoiceStatus() {
   var sel = document.getElementById('quiz-lang-select');
   var lang = byCode(sel ? sel.value : quizState.lang);
   if (!lang) return;
+  var qLang = quizState.langObj || lang;
+  if (quizState.sent && audioUrlFor(quizState.sent.o, qLang)) { statusEl.textContent = '♪ mp3 음원'; return; }
   var base = voiceStatusBase(lang);
   if (!('speechSynthesis' in window)) { statusEl.textContent = base; return; }
   var info = getVoiceMatchInfo(lang.tts);
