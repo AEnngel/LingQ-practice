@@ -559,6 +559,13 @@
     $('qWrong').textContent = String(quiz.wrong.length);
     $('btnNextQ').disabled = false;
 
+    /* 해설이 탭바에 가리면 필요한 만큼만 올린다 */
+    setTimeout(function () {
+      var r = card.getBoundingClientRect();
+      var need = r.bottom - (window.innerHeight - 78);
+      if (need > 0) window.scrollTo({ top: window.scrollY + need + 10, behavior: 'smooth' });
+    }, 80);
+
     if (settings.autoSpeak) {
       setTimeout(function () { speakOne(w[q.lang].w, L.tts, 1); }, 180);
     }
