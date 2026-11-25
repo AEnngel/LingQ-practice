@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>LingQ 미니 스토리 연습장 v13 — 1a~21c · 63편 · 30개 언어</title>
+<title>LingQ 미니 스토리 연습장 v14 — 1a~21c · 63편 · 30개 언어</title>
 <style>
   :root {
     --bg: #f8fafc;
@@ -187,7 +187,7 @@
 <header>
   <div class="header-inner">
     <div class="title-row">
-      <h1>🌐 LingQ 미니 스토리 연습장 <span class="ver">v13</span> <span class="range">1a~21c · 63편</span></h1>
+      <h1>🌐 LingQ 미니 스토리 연습장 <span class="ver">v14</span> <span class="range">1a~21c · 63편</span></h1>
       <div class="tabs">
         <button class="tab-btn active" data-mode="card">카드 학습</button>
         <button class="tab-btn" data-mode="quiz">퀴즈</button>
@@ -284,12 +284,12 @@
 
 <script>
 /* =========================================================
-   LingQ 미니 스토리 연습장 v13
+   LingQ 미니 스토리 연습장 v14
    - 회차(1a~21c, 63편) 드롭다운 + stories/{id}.json 동적 로딩
    - 배속 0.7/1.0/1.25/1.5/2.0 (카드·연속·비교·퀴즈 모두)
    - 이어 듣기 3종: 전체 듣기 / 이번 편(a→b→c) / 전체 회차(지금 → 21c)
    - 퀴즈 출제 범위: 현재 챕터만 / 전체 챕터 랜덤
-   - 아이슬란드·아일랜드·웨일스·아프리칸스·라틴어는 audio/*.mp3 우선 재생
+   - 아이슬란드·아일랜드·웨일스·아프리칸스·라틴어 + 스코츠·셔틀랜드·오크니·스코틀랜드 게일어까지 9개 언어 audio/*.mp3 우선 재생
    - 언어 비교 카드마다 🔊 듣기
    - 퀴즈: 뜻 4지선다 / 소리 듣고 빈칸, 오답 1회 재시도·정답 시 자동 다음 문제
    - ★ 복습함(localStorage)
@@ -736,8 +736,8 @@ function setSpeed(v) {
   savePrefs();
 }
 
-/* ---------- 녹음 음원(mp3) — 아이슬란드·아일랜드·웨일스·아프리칸스·라틴 ---------- */
-var AUDIO_CODES = { is: 1, ga: 1, cy: 1, af: 1, la: 1 };
+/* ---------- 녹음 음원(mp3) — 아이슬란드·아일랜드·웨일스·아프리칸스·라틴 + 스코츠·셔틀랜드·오크니·게일어 ---------- */
+var AUDIO_CODES = { is: 1, ga: 1, cy: 1, af: 1, la: 1, sco: 1, shet: 1, ork: 1, gd: 1 };
 var audioIndex = null;
 var audioEl = null;
 var audioCount = 0;
@@ -823,6 +823,8 @@ var VOICE_ROBOT_NAMES = ['sandy', 'shelley', 'eddy', 'flo', 'grandma', 'grandpa'
   'superstar', 'trinoids', 'whisper', 'wobble', 'zarvox', 'fred', 'junior', 'ralph', 'kathy', 'karen'];
 var UK_VOICE_NAMES = ['daniel', 'oliver', 'arthur', 'kate', 'serena', 'martha', 'stephanie', 'libby', 'sonia', 'ryan', 'maisie', 'google uk english'];
 var LANG_ALIASES = { 'nb': ['no'], 'no': ['nb'] };
+/* 기기에 해당 언어 음성이 없을 때 빌려 읽을 음성 (라틴어·게일어·스코츠 계열) */
+var TTS_FALLBACKS = { 'la': ['it-IT'], 'gd': ['ga-IE', 'en-GB'], 'sco': ['en-GB'], 'shet': ['en-GB'], 'ork': ['en-GB'] };
 
 function voiceNameTokens(name) {
   return String(name || '').toLowerCase().replace(/[^a-z]+/g, ' ').trim().split(' ').filter(Boolean);
@@ -998,8 +1000,12 @@ function speakSynth(text, lang, mult, statusId, onEnd, myToken) {
   var synth = window.speechSynthesis;
   var ttsCode = lang.tts;
   var info = getVoiceMatchInfo(ttsCode);
-  // 고전 라틴어는 기기에 음성이 없으므로 이탈리아어 음성으로 읽는다
-  if (!info.voice && lang.code === 'la') { ttsCode = 'it-IT'; info = getVoiceMatchInfo(ttsCode); }
+  // 고전 라틴어 → 이탈리아어, 게일어 → 아일랜드어/영국식, 스코츠 계열 → 영국식 음성으로 읽는다
+  var fallbacks = TTS_FALLBACKS[lang.code] || [];
+  for (var fi = 0; fi < fallbacks.length && !info.voice; fi++) {
+    ttsCode = fallbacks[fi];
+    info = getVoiceMatchInfo(ttsCode);
+  }
   var rawText = buildNaturalSpeechText(text, lang.code);
   if (info.totalVoices > 0 && !info.voice) {
     setVoiceStatus(MSG_NO_VOICE, lang, statusId);
