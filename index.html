@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>LingQ 미니 스토리 연습장 v12 — 1a~21a · 30개 언어</title>
+<title>LingQ 미니 스토리 연습장 v13 — 1a~21c · 63편 · 30개 언어</title>
 <style>
   :root {
     --bg: #f8fafc;
@@ -37,6 +37,7 @@
   .title-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: space-between; margin-bottom: 6px; }
   h1 { font-size: 1.02rem; font-weight: 800; color: var(--primary); }
   h1 .ver { font-size: 0.72rem; font-weight: 700; color: #fff; background: var(--primary); border-radius: 6px; padding: 1px 6px; margin-left: 4px; vertical-align: 2px; }
+  h1 .range { font-size: 0.7rem; font-weight: 700; color: var(--muted); margin-left: 3px; }
   .tabs { display: flex; gap: 5px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
   .tab-btn {
     flex: 0 0 auto;
@@ -88,9 +89,11 @@
   .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 600; }
   .btn-stop { background: #fee2e2; color: #7f1d1d; border-color: #fecaca; font-weight: 700; }
   .btn-toggle.active { background: #fef3c7; border-color: #f59e0b; color: #92400e; font-weight: 600; }
-  .speed { display: flex; gap: 4px; align-items: center; }
-  .speed .lbl { font-size: 0.75rem; color: var(--muted); font-weight: 700; margin-right: 2px; }
-  .speed button { padding: 5px 8px; font-size: 0.78rem; }
+  .speed { display: flex; gap: 4px; align-items: center; flex-wrap: nowrap; }
+  .speed .lbl { font-size: 0.75rem; color: var(--muted); font-weight: 700; margin-right: 2px; white-space: nowrap; }
+  .speed button { padding: 5px 8px; font-size: 0.78rem; white-space: nowrap; }
+  .btn-row { display: flex; gap: 6px; flex-wrap: wrap; width: 100%; }
+  .btn-row button { white-space: nowrap; }
   .speed button.active { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 700; }
   .card {
     background: var(--card);
@@ -184,7 +187,7 @@
 <header>
   <div class="header-inner">
     <div class="title-row">
-      <h1>🌐 LingQ 미니 스토리 연습장 <span class="ver">v12</span></h1>
+      <h1>🌐 LingQ 미니 스토리 연습장 <span class="ver">v13</span> <span class="range">1a~21c · 63편</span></h1>
       <div class="tabs">
         <button class="tab-btn active" data-mode="card">카드 학습</button>
         <button class="tab-btn" data-mode="quiz">퀴즈</button>
@@ -217,12 +220,14 @@
         <button data-speed="1.5" onclick="setSpeed(1.5)">1.5x 빠르게</button>
         <button data-speed="2" title="언어별 기본 속도 × 2.0 (브라우저 한도 2.0에서 멈춤)" onclick="setSpeed(2)">2.0x</button>
       </div>
-      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+      <div class="btn-row" style="justify-content:flex-start;">
         <button class="btn-primary" onclick="speakSentence()">🔊 듣기</button>
-        <button id="btn-playall" onclick="togglePlayAll()">▶️ 전체 듣기</button>
+        <button id="btn-playall" onclick="togglePlayAll()" title="이 회차·이 언어의 문장을 처음부터 끝까지">▶️ 전체 듣기</button>
+        <button id="btn-playpart" onclick="togglePlayPart()" title="이번 편을 a → b → c 순서로, 지금 회차부터 끊김 없이">🔁 이번 편 이어 듣기</button>
+        <button id="btn-playcourse" onclick="togglePlayCourse()" title="지금 회차부터 마지막 21c까지 자동으로 넘기며 연속 재생">🎧 전체 회차 이어 듣기</button>
         <button onclick="showVoiceDiag()">🩺 소리 진단</button>
       </div>
-      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+      <div class="btn-row">
         <button id="toggle-pron" class="btn-toggle" onclick="toggleHide('pron')">발음 가리기</button>
         <button id="toggle-ko" class="btn-toggle" onclick="toggleHide('ko')">해석 가리기</button>
         <button id="toggle-tbl" class="btn-toggle" onclick="toggleHide('tbl')">단어표 가리기</button>
@@ -243,6 +248,10 @@
       <select id="quiz-type" onchange="newQuiz()">
         <option value="meaning">4지선다 — 뜻 맞추기</option>
         <option value="cloze">소리 듣고 빈칸 채우기</option>
+      </select>
+      <select id="quiz-scope" onchange="newQuiz()" title="문제를 어느 회차에서 낼지 고릅니다">
+        <option value="chapter">출제 범위: 현재 챕터만</option>
+        <option value="all">출제 범위: 전체 챕터 랜덤</option>
       </select>
       <select id="quiz-lang-select" onchange="newQuiz()"></select>
       <button class="btn-primary" onclick="newQuiz()">새 문제</button>
@@ -275,12 +284,14 @@
 
 <script>
 /* =========================================================
-   LingQ 미니 스토리 연습장 v12
-   - 회차(1a~21a) 드롭다운 + stories/{id}.json 동적 로딩
-   - 배속 0.7/1.0/1.25/1.5 (카드·연속·비교·퀴즈 모두)
-   - 전체 문장 연속 듣기 + 현재 문장 하이라이트
+   LingQ 미니 스토리 연습장 v13
+   - 회차(1a~21c, 63편) 드롭다운 + stories/{id}.json 동적 로딩
+   - 배속 0.7/1.0/1.25/1.5/2.0 (카드·연속·비교·퀴즈 모두)
+   - 이어 듣기 3종: 전체 듣기 / 이번 편(a→b→c) / 전체 회차(지금 → 21c)
+   - 퀴즈 출제 범위: 현재 챕터만 / 전체 챕터 랜덤
+   - 아이슬란드·아일랜드·웨일스·아프리칸스·라틴어는 audio/*.mp3 우선 재생
    - 언어 비교 카드마다 🔊 듣기
-   - 퀴즈: 뜻 4지선다 / 소리 듣고 빈칸, 정답 시 자동 다음 문제
+   - 퀴즈: 뜻 4지선다 / 소리 듣고 빈칸, 오답 1회 재시도·정답 시 자동 다음 문제
    - ★ 복습함(localStorage)
    - 중국어 간체·번체 병기 + 성조 범례
    ========================================================= */
@@ -299,7 +310,7 @@ var speed = 1;
 var hideState = { pron: false, ko: false, tbl: false };
 var STARS = {};
 var LANGNAMES = {};
-var seq = { active: false, idx: 0, token: 0, watch: null };
+var seq = { active: false, mode: '', ids: [], si: 0, idx: 0, token: 0, watch: null, lang: '' };
 var quizState = { lang: '', type: 'clue', correct: null, sent: null, answered: false, attempts: 0, right: 0, total: 0, timer: null, clozeWord: null };
 
 /* ---------- 저장소 ---------- */
@@ -388,7 +399,37 @@ function buildStorySelect() {
   document.getElementById('story-select').innerHTML = html;
 }
 
-function selectStory(id, keepLang, keepSent) {
+var storyCache = {};
+function fetchStory(id) {
+  id = String(id);
+  if (storyCache[id]) return Promise.resolve(storyCache[id]);
+  return fetch('stories/' + id + '.json', { cache: 'no-cache' })
+    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function (d) { storyCache[id] = d; return d; });
+}
+
+/* 회차 데이터를 화면에 적용 — 이어 듣기 중 회차가 바뀔 때도 재생을 끊지 않는다 */
+function applyStory(data, wantLang, sentIdx) {
+  STORY = data;
+  storyId = data.id;
+  for (var li = 0; li < data.langs.length; li++) LANGNAMES[data.langs[li].code] = data.langs[li].name;
+  lsSet('lq12_names', LANGNAMES);
+  var meta = MANIFEST.filter(function (m) { return m.id === data.id; })[0] || {};
+  document.getElementById('story-chip').textContent = data.id + ' · ' + (meta.langs || data.langs.length) + '개 언어 · ' + (meta.words || 0).toLocaleString() + '단어';
+  document.getElementById('story-meta').textContent = data.subtitle || '';
+  document.getElementById('story-select').value = data.id;
+  var codes = data.langs.map(function (l) { return l.code; });
+  curLangCode = (wantLang && codes.indexOf(wantLang) !== -1) ? wantLang : (codes.indexOf('en') !== -1 ? 'en' : codes[0]);
+  initSelects();
+  var len = (byCode(curLangCode) || { sents: [] }).sents.length || 1;
+  curSentIdx = (typeof sentIdx === 'number' && sentIdx > 0) ? Math.min(sentIdx, len - 1) : 0;
+  cmpSentIdx = 0;
+  renderCard();
+  if (document.getElementById('mode-compare') && !document.getElementById('mode-compare').classList.contains('hidden')) renderCompare();
+  if (document.getElementById('mode-stars') && !document.getElementById('mode-stars').classList.contains('hidden')) renderStars();
+}
+
+function selectStory(id, keepLang) {
   if (!id) return;
   stopAll();
   storyId = id;
@@ -397,25 +438,8 @@ function selectStory(id, keepLang, keepSent) {
   document.getElementById('story-meta').textContent = '';
   document.getElementById('card-body').innerHTML = '<div class="loading">stories/' + esc(id) + '.json 불러오는 중…</div>';
   lsSet('lq12_story', id);
-  fetch('stories/' + id + '.json', { cache: 'no-cache' })
-    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(function (data) {
-      STORY = data;
-      for (var li = 0; li < data.langs.length; li++) LANGNAMES[data.langs[li].code] = data.langs[li].name;
-      lsSet('lq12_names', LANGNAMES);
-      var meta = MANIFEST.filter(function (m) { return m.id === id; })[0] || {};
-      document.getElementById('story-chip').textContent = id + ' · ' + (meta.langs || data.langs.length) + '개 언어 · ' + (meta.words || 0).toLocaleString() + '단어';
-      document.getElementById('story-meta').textContent = data.subtitle || '';
-      var codes = data.langs.map(function (l) { return l.code; });
-      var want = keepLang && codes.indexOf(curLangCode) !== -1 ? curLangCode : (codes.indexOf('en') !== -1 ? 'en' : codes[0]);
-      curLangCode = want;
-      initSelects();
-      curSentIdx = 0;
-      cmpSentIdx = 0;
-      renderCard();
-      if (document.getElementById('mode-compare') && !document.getElementById('mode-compare').classList.contains('hidden')) renderCompare();
-      if (document.getElementById('mode-stars') && !document.getElementById('mode-stars').classList.contains('hidden')) renderStars();
-    })
+  fetchStory(id)
+    .then(function (data) { applyStory(data, keepLang ? curLangCode : null, 0); })
     .catch(function (err) {
       document.getElementById('story-chip').textContent = '불러오기 실패';
       document.getElementById('card-body').innerHTML = '<div class="loading"><span class="errmark">회차 파일을 불러오지 못했습니다.</span><br>' +
@@ -437,9 +461,11 @@ function initSelects() {
   var picks = ['en', 'de', 'ko'];
   var ids = ['cmp-1', 'cmp-2', 'cmp-3'];
   for (var j = 0; j < 3; j++) {
-    document.getElementById(ids[j]).innerHTML = html;
-    var code = byCode(picks[j]) ? picks[j] : langs[Math.min(j, langs.length - 1)].code;
-    document.getElementById(ids[j]).value = code;
+    var el = document.getElementById(ids[j]);
+    var prev = el.value;
+    el.innerHTML = html;
+    var code = (prev && byCode(prev)) ? prev : (byCode(picks[j]) ? picks[j] : langs[Math.min(j, langs.length - 1)].code);
+    el.value = code;
   }
 }
 
@@ -495,7 +521,7 @@ function renderCard() {
   if (ap && ap.scrollIntoView) { try { ap.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch (e) {} }
   document.getElementById('sent-counter').textContent =
     ordinal(curSentIdx) + ' (' + (curSentIdx + 1) + ' / ' + lang.sents.length + ')' +
-    (seq.active ? ' · ▶ 연속 재생 중' : '');
+    (seq.active ? (seq.mode === 'playpart' ? ' · ▶ 이번 편 이어 듣기' : (seq.mode === 'playcourse' ? ' · ▶ 전체 회차 이어 듣기' : ' · ▶ 연속 재생 중')) : '');
 
   var isKo = lang.code === 'ko';
   var isZh = lang.code === 'zh';
@@ -577,53 +603,125 @@ function nextSent() {
   setSent((curSentIdx + 1) % len);
 }
 
-/* ---------- 연속 듣기 ---------- */
-function togglePlayAll() {
-  if (seq.active) { stopAll(); return; }
-  if (!STORY || !curLang()) return;
-  seq.active = true;
-  seq.idx = curSentIdx;
-  seq.token++;
-  document.getElementById('btn-playall').textContent = '⏹️ 중지';
-  document.getElementById('btn-playall').classList.add('btn-stop');
-  speakSeq(seq.token);
+/* ---------- 이어 듣기 (전체 / 이번 편 a→b→c / 전체 회차 → 21c) ---------- */
+var SEQ_LABEL = { playall: '▶️ 전체 듣기', playpart: '🔁 이번 편 이어 듣기', playcourse: '🎧 전체 회차 이어 듣기' };
+function curManifestIndex() {
+  for (var i = 0; i < MANIFEST.length; i++) if (MANIFEST[i].id === storyId) return i;
+  return 0;
 }
-function speakSeq(token) {
+function partStoryIds() {
+  var idx = curManifestIndex();
+  var num = MANIFEST[idx] ? MANIFEST[idx].num : null;
+  var ids = [];
+  for (var i = idx; i < MANIFEST.length; i++) {
+    if (num !== null && MANIFEST[i].num !== num) break;
+    ids.push(MANIFEST[i].id);
+  }
+  return ids.length ? ids : [storyId];
+}
+function courseStoryIds() {
+  var idx = curManifestIndex();
+  var ids = [];
+  for (var i = idx; i < MANIFEST.length; i++) ids.push(MANIFEST[i].id);
+  return ids.length ? ids : [storyId];
+}
+function updateSeqButtons() {
+  for (var mode in SEQ_LABEL) {
+    if (!SEQ_LABEL.hasOwnProperty(mode)) continue;
+    var b = document.getElementById('btn-' + mode);
+    if (!b) continue;
+    var on = seq.active && seq.mode === mode;
+    b.textContent = on ? '⏹️ 중지' : SEQ_LABEL[mode];
+    b.classList.toggle('btn-stop', on);
+    b.classList.toggle('btn-primary', false);
+  }
+}
+function togglePlayAll() { if (seq.active && seq.mode === 'playall') { stopAll(); return; } startSeq('playall'); }
+function togglePlayPart() { if (seq.active && seq.mode === 'playpart') { stopAll(); return; } startSeq('playpart'); }
+function togglePlayCourse() { if (seq.active && seq.mode === 'playcourse') { stopAll(); return; } startSeq('playcourse'); }
+
+function startSeq(mode) {
+  if (!STORY || !curLang()) return;
+  var ids;
+  if (mode === 'playpart') ids = partStoryIds();
+  else if (mode === 'playcourse') ids = courseStoryIds();
+  else ids = [storyId];
+  if (!ids.length) return;
+  var fromSent = curSentIdx;
+  var fromLang = curLangCode;
+  stopAll();
+  if (!storyCache[storyId]) storyCache[storyId] = STORY;
+  seq.active = true;
+  seq.mode = mode;
+  seq.ids = ids;
+  seq.si = 0;
+  seq.idx = fromSent;
+  seq.lang = fromLang;
+  seq.token++;
+  updateSeqButtons();
+  stepSeq(seq.token);
+}
+
+function seqGoStory(sid, token, cb) {
+  if (STORY && storyId === sid) { cb(); return; }
+  fetchStory(sid)
+    .then(function (data) {
+      if (!seq.active || token !== seq.token) return;
+      applyStory(data, seq.lang, 0);
+      cb();
+    })
+    .catch(function () {
+      if (!seq.active || token !== seq.token) return;
+      seq.si++;
+      seq.idx = 0;
+      stepSeq(token);
+    });
+}
+
+function stepSeq(token) {
   if (!seq.active || token !== seq.token) return;
-  var lang = curLang();
-  var i = seq.idx;
-  if (i >= lang.sents.length) { stopAll(); return; }
-  curSentIdx = i;
+  if (seq.si >= seq.ids.length) { stopAll(); return; }
+  var sid = seq.ids[seq.si];
+  if (!STORY || storyId !== sid) {
+    seqGoStory(sid, token, function () { if (seq.active && token === seq.token) stepSeq(token); });
+    return;
+  }
+  var lang = byCode(seq.lang);
+  if (!lang) { seq.si++; seq.idx = 0; stepSeq(token); return; }
+  if (seq.idx >= lang.sents.length) { seq.si++; seq.idx = 0; stepSeq(token); return; }
+  curLangCode = seq.lang;
+  curSentIdx = seq.idx;
   renderCard();
-  var s = lang.sents[i];
+  var s = lang.sents[seq.idx];
   var advanced = false;
   var goNext = function () {
     if (advanced || !seq.active || token !== seq.token) return;
     advanced = true;
     if (seq.watch) { clearTimeout(seq.watch); seq.watch = null; }
-    if (seq.idx < lang.sents.length - 1) { seq.idx++; speakSeq(token); }
-    else { stopAll(); }
+    seq.idx++;
+    stepSeq(token);
   };
   var ok = speakText(s.o, lang, speed, 'tts-voice-info', goNext);
   if (!ok) {
-    setVoiceStatus('이 언어 음성이 없어 연속 듣기를 멈췄습니다', lang, 'tts-voice-info');
+    setVoiceStatus('이 언어 음성을 재생할 수 없어 이어 듣기를 멈췄습니다', lang, 'tts-voice-info');
     stopAll();
     return;
   }
-  // onend가 오지 않는 기기(음성 목록 0개·정책 차단)에서도 멈추지 않도록 안전장치
-  var est = Math.max(6000, String(s.o).length * 140 / Math.max(0.5, speed));
+  // onend가 오지 않는 기기(음성 목록 0개·정책 차단·mp3 로드 실패)에서도 멈추지 않도록 안전장치
+  var est = Math.max(7000, String(s.o).length * 160 / Math.max(0.5, speed));
   if (seq.watch) clearTimeout(seq.watch);
   seq.watch = setTimeout(goNext, est);
 }
+
 function stopAll() {
   seq.active = false;
   seq.token++;
   if (seq.watch) { clearTimeout(seq.watch); seq.watch = null; }
   if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+  stopAudio();
   if (speakTimer) { clearTimeout(speakTimer); speakTimer = null; }
   speakToken++;
-  var b = document.getElementById('btn-playall');
-  if (b) { b.textContent = '▶️ 전체 듣기'; b.classList.remove('btn-stop'); }
+  updateSeqButtons();
   var counter = document.getElementById('sent-counter');
   if (counter && STORY && curLang()) counter.textContent = ordinal(curSentIdx) + ' (' + (curSentIdx + 1) + ' / ' + curLang().sents.length + ')';
 }
@@ -636,6 +734,80 @@ function setSpeed(v) {
     btns[i].classList.toggle('active', Number(btns[i].getAttribute('data-speed')) === speed);
   }
   savePrefs();
+}
+
+/* ---------- 녹음 음원(mp3) — 아이슬란드·아일랜드·웨일스·아프리칸스·라틴 ---------- */
+var AUDIO_CODES = { is: 1, ga: 1, cy: 1, af: 1, la: 1 };
+var audioIndex = null;
+var audioEl = null;
+var audioCount = 0;
+function normSpeechText(t) {
+  return String(t == null ? '' : t).replace(/^\([^)]*\)\s*/, '').replace(/\s+/g, ' ').trim();
+}
+/* 파이썬 생성기(tools/gen_audio.py)와 같은 FNV-1a 32bit(UTF-8) 해시 */
+function fnv1a(str) {
+  var h = 0x811C9DC5 >>> 0;
+  if (window.TextEncoder) {
+    var b = new TextEncoder().encode(str);
+    for (var i = 0; i < b.length; i++) { h = (h ^ b[i]) >>> 0; h = Math.imul(h, 0x01000193) >>> 0; }
+  } else {
+    for (var j = 0; j < str.length; j++) { h = (h ^ str.charCodeAt(j)) >>> 0; h = Math.imul(h, 0x01000193) >>> 0; }
+  }
+  var hex = (h >>> 0).toString(16);
+  while (hex.length < 8) hex = '0' + hex;
+  return hex;
+}
+function loadAudioIndex() {
+  fetch('audio/index.json', { cache: 'no-cache' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (j) {
+      if (!j || !j.hashes) return;
+      audioIndex = {};
+      for (var code in j.hashes) {
+        if (!j.hashes.hasOwnProperty(code)) continue;
+        var set = {}, arr = j.hashes[code] || [];
+        for (var i = 0; i < arr.length; i++) set[arr[i]] = 1;
+        audioIndex[code] = set;
+        audioCount += arr.length;
+      }
+      refreshVoiceStatus();
+    })
+    .catch(function () {});
+}
+function audioUrlFor(text, lang) {
+  if (!lang || !AUDIO_CODES[lang.code] || !audioIndex) return null;
+  var set = audioIndex[lang.code];
+  if (!set) return null;
+  var h = fnv1a(normSpeechText(buildNaturalSpeechText(text, lang.code)));
+  return set[h] ? ('audio/' + lang.code + '/' + h + '.mp3') : null;
+}
+function stopAudio() {
+  if (!audioEl) return;
+  var a = audioEl;
+  audioEl = null;
+  try { a.onended = null; a.onerror = null; a.pause(); } catch (e) {}
+}
+function playAudioUrl(url, rate, onEnd, onFail) {
+  stopAudio();
+  var a = new Audio();
+  audioEl = a;
+  var settled = false;
+  var finish = function (ok) {
+    if (settled) return;
+    settled = true;
+    if (audioEl === a) audioEl = null;
+    if (ok) { if (onEnd) onEnd(); } else if (onFail) onFail();
+  };
+  a.onended = function () { finish(true); };
+  a.onerror = function () { finish(false); };
+  a.preload = 'auto';
+  a.src = url;
+  try { a.playbackRate = rate; } catch (e) {}
+  var p = a.play();
+  if (p && p.then) {
+    p.then(function () { try { a.playbackRate = rate; } catch (e) {} })
+      .catch(function () { finish(false); });
+  }
 }
 
 /* ---------- TTS ---------- */
@@ -716,6 +888,13 @@ function refreshVoiceStatus() {
   if (!lang) return;
   var statusEl = document.getElementById('tts-voice-info');
   if (!statusEl) return;
+  var curS = lang.sents ? lang.sents[curSentIdx] : null;
+  var aUrl = curS ? audioUrlFor(curS.o, lang) : null;
+  if (aUrl) {
+    statusEl.textContent = '♪ mp3 음원';
+    statusEl.setAttribute('title', aUrl);
+    return;
+  }
   var base = voiceStatusBase(lang);
   if (!('speechSynthesis' in window)) { statusEl.textContent = base; return; }
   var info = getVoiceMatchInfo(lang.tts);
@@ -767,7 +946,9 @@ function getVoiceMatchInfo(langCode) {
 }
 function buildNaturalSpeechText(text, code) {
   var t = String(text || '').trim();
-  t = t.replace(/^\([^)]*\)\s*/, '');
+  var stripped = t.replace(/^\([^)]*\)\s*/, '');
+  if (!stripped) stripped = t.replace(/^\(([^)]*)\)\s*$/, '$1'); // 괄호만 있는 문장은 괄호를 벗겨 읽는다
+  t = stripped;
   if (code === 'sco' || code === 'shet' || code === 'ork') {
     t = t.replace(/\bA\b/g, 'I').replace(/\bme\b/g, 'my').replace(/\btae\b/g, 'to')
          .replace(/\bwark\b/g, 'work').replace(/\bcaur\b/g, 'car').replace(/\bfae\b/g, 'from');
@@ -781,36 +962,59 @@ function baseSpeechRate(lang) {
   if (lang.code === 'es' || lang.code === 'it' || lang.code === 'pt' || lang.code === 'fr') baseRate = 0.95;
   return baseRate;
 }
+/* 녹음 mp3가 있으면 <audio>로, 없으면 speechSynthesis로 재생한다 */
 function speakText(text, lang, rate, statusElId, onEnd) {
+  if (!lang) return false;
+  var statusId = statusElId || 'tts-voice-info';
+  var mult = (typeof rate === 'number' && rate > 0) ? rate : 1;
+  lastVoiceError = '';
+  if (speakTimer) { clearTimeout(speakTimer); speakTimer = null; }
+  var myToken = ++speakToken;
+  if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+  stopAudio();
+
+  var url = audioUrlFor(text, lang);
+  if (url) {
+    setVoiceStatus('♪ 녹음 음원(mp3) 재생', lang, statusId);
+    playAudioUrl(url, Math.min(2.0, Math.max(0.5, mult)), function () {
+      if (myToken !== speakToken) return;
+      if (onEnd) onEnd();
+    }, function () {
+      if (myToken !== speakToken) return;
+      speakSynth(text, lang, mult, statusId, onEnd, myToken);
+    });
+    return true;
+  }
+  return speakSynth(text, lang, mult, statusId, onEnd, myToken);
+}
+
+function speakSynth(text, lang, mult, statusId, onEnd, myToken) {
   if (!('speechSynthesis' in window)) {
     alert('현재 뷰어에서는 음성 합성을 지원하지 않습니다. PC 브라우저나 모바일 웹 브라우저(Chrome·Safari 등)에서 열어주세요.');
     return false;
   }
-  if (!lang) return false;
-  var statusId = statusElId || 'tts-voice-info';
   var synth = window.speechSynthesis;
-  lastVoiceError = '';
-  if (speakTimer) { clearTimeout(speakTimer); speakTimer = null; }
-  var myToken = ++speakToken;
-  var info = getVoiceMatchInfo(lang.tts);
+  var ttsCode = lang.tts;
+  var info = getVoiceMatchInfo(ttsCode);
+  // 고전 라틴어는 기기에 음성이 없으므로 이탈리아어 음성으로 읽는다
+  if (!info.voice && lang.code === 'la') { ttsCode = 'it-IT'; info = getVoiceMatchInfo(ttsCode); }
   var rawText = buildNaturalSpeechText(text, lang.code);
   if (info.totalVoices > 0 && !info.voice) {
     setVoiceStatus(MSG_NO_VOICE, lang, statusId);
     return false;
   }
-  var mult = (typeof rate === 'number' && rate > 0) ? rate : 1;
   var useRate = Math.min(2.0, Math.max(0.4, baseSpeechRate(lang) * mult));
 
   function fire() {
     if (myToken !== speakToken) return;
     if (!('speechSynthesis' in window)) return;
     if (info.totalVoices === 0) {
-      var lateInfo = getVoiceMatchInfo(lang.tts);
+      var lateInfo = getVoiceMatchInfo(ttsCode);
       if (lateInfo.totalVoices > 0) info = lateInfo;
       if (info.totalVoices > 0 && !info.voice) { setVoiceStatus(MSG_NO_VOICE, lang, statusId); return; }
     }
     var u = new SpeechSynthesisUtterance(rawText);
-    u.lang = lang.tts;
+    u.lang = ttsCode;
     if (info.voice) u.voice = info.voice;
     u.rate = useRate;
     u.pitch = 1.0;
@@ -852,6 +1056,8 @@ function showVoiceDiag() {
   alert('[음성 엔진 진단]\n- 회차: ' + storyId + '\n- 현재 언어: ' + lang.name + ' (' + lang.tts + ')\n' +
     '- speechSynthesis 지원: ' + (('speechSynthesis' in window) ? '예' : '아니오') + '\n' +
     '- 기기 전체 목소리: ' + voices.length + '개\n' +
+    '- 녹음 mp3: ' + (audioCount ? (audioCount + '개 파일 · 이 언어 ' + ((audioIndex && audioIndex[lang.code]) ? Object.keys(audioIndex[lang.code]).length : 0) + '개') : '없음') + '\n' +
+    '- 이 문장 mp3: ' + (audioUrlFor((lang.sents[curSentIdx] || {}).o, lang) || '없음(기기 음성으로 시도)') + '\n' +
     '- 선택된 목소리: ' + (info.voice ? (info.voice.name + ' [' + info.voice.lang + ']') : '없음(이 언어 음성 미설치 — 재생하지 않음)') + '\n' +
     '- 일치 언어군: ' + sameSummary + '\n- 기기 목소리 샘플: ' + allSample + '\n' +
     (lastVoiceError ? ('- 최근 오류: ' + lastVoiceError + '\n') : '') +
@@ -886,6 +1092,31 @@ function quizType() {
   var el = document.getElementById('quiz-type');
   return el ? el.value : 'meaning';
 }
+var quizPoolCache = {};
+var quizSeq = 0;
+function quizScope() {
+  var el = document.getElementById('quiz-scope');
+  return el ? el.value : 'chapter';
+}
+/* 전체 챕터 랜덤 — 회차 14편을 무작위로 받아 현재 언어 문장을 모은다(한 번만) */
+function buildQuizPool(langCode, cb) {
+  var ids = shuffle(MANIFEST.map(function (m) { return m.id; })).slice(0, 14);
+  if (storyId && ids.indexOf(storyId) === -1) ids.unshift(storyId);
+  var items = [];
+  var left = ids.length;
+  if (!left) { cb(items); return; }
+  ids.forEach(function (id) {
+    fetchStory(id)
+      .then(function (d) {
+        var l = null;
+        for (var i = 0; i < d.langs.length; i++) if (d.langs[i].code === langCode) l = d.langs[i];
+        if (l) for (var k = 0; k < l.sents.length; k++) items.push({ s: l.sents[k], sid: id, lang: l });
+      })
+      .catch(function () {})
+      .then(function () { if (--left === 0) cb(items); });
+  });
+}
+
 function newQuiz() {
   if (!STORY) return;
   if (quizState.timer) { clearTimeout(quizState.timer); quizState.timer = null; }
@@ -896,14 +1127,36 @@ function newQuiz() {
   quizState.type = type;
   quizState.answered = false;
   quizState.attempts = 0;
-  var body = document.getElementById('quiz-body');
+  var mySeq = ++quizSeq;
+  if (quizScope() === 'all' && !(quizPoolCache[lang.code] && quizPoolCache[lang.code].length)) {
+    document.getElementById('quiz-body').innerHTML = '<div class="empty">전체 회차에서 문제를 고르는 중… 처음 한 번만 불러옵니다.</div>';
+    buildQuizPool(lang.code, function (items) {
+      if (mySeq !== quizSeq) return;
+      if (items.length) quizPoolCache[lang.code] = items;
+      renderQuizBody(lang, type, items);
+    });
+    return;
+  }
+  var items = [];
+  if (quizScope() === 'all') items = quizPoolCache[lang.code];
+  else for (var i0 = 0; i0 < lang.sents.length; i0++) items.push({ s: lang.sents[i0], sid: storyId, lang: lang });
+  renderQuizBody(lang, type, items);
+}
 
-  var qi = rnd(lang.sents.length);
+function renderQuizBody(lang, type, items) {
+  var body = document.getElementById('quiz-body');
+  if (!items || !items.length) {
+    body.innerHTML = '<div class="empty">문제를 만들 문장을 찾지 못했습니다. 출제 범위를 ‘현재 챕터만’으로 바꾸면 바로 출제됩니다.</div>';
+    return;
+  }
+
+  var qi = rnd(items.length);
   if (type === 'cloze') {
     // 빈칸으로 쓸 수 있는 낱말 찾기 (문장 안에 그대로 등장하는 것)
-    var tries = 0, picked = null, sent = null, core2 = '';
-    while (tries++ < 80 && !picked) {
-      var cand = lang.sents[rnd(lang.sents.length)];
+    var tries = 0, picked = null, sent = null, core2 = '', fromSid = storyId;
+    while (tries++ < 120 && !picked) {
+      var it = items[rnd(items.length)];
+      var cand = it.s;
       var idxs = [];
       for (var i = 0; i < cand.w.length; i++) {
         var core = cleanWord(cand.w[i][0]);
@@ -913,20 +1166,22 @@ function newQuiz() {
         // 핵심 낱말 위주로 — 긴 낱말 절반 안에서 고른다
         idxs.sort(function (a, b) { return b.n - a.n; });
         var keep = idxs.slice(0, Math.max(1, Math.ceil(idxs.length / 2)));
-        picked = cand.w[keep[rnd(keep.length)].i]; sent = cand;
+        picked = cand.w[keep[rnd(keep.length)].i]; sent = cand; fromSid = it.sid;
       }
     }
     if (!picked) { body.innerHTML = '<div class="empty">이 언어에서는 빈칸 문제를 만들 수 없습니다. 다른 언어를 골라 주세요.</div>'; return; }
     core2 = cleanWord(picked[0]);
     quizState.correct = core2;
     quizState.sent = sent;
+    quizState.langObj = lang;
+    quizState.sid = fromSid;
     quizState.clozeWord = picked;
     var shown = sent.o.replace(core2, '____');
     // 보기: 정답 + 같은 언어의 다른 낱말 3개 (문장부호·번호 낱말은 뺀다)
     var pool = [], seen = {};
     seen[core2.toLowerCase()] = 1;
-    for (var s2 = 0; s2 < lang.sents.length && pool.length < 60; s2++) {
-      var ss = lang.sents[s2];
+    for (var s2 = 0; s2 < items.length && pool.length < 80; s2++) {
+      var ss = items[s2].s;
       for (var k = 0; k < ss.w.length; k++) {
         var ww = cleanWord(ss.w[k][0]);
         if (ww.length < 2 || badBlankRow(ss.w[k])) continue;
@@ -944,8 +1199,8 @@ function newQuiz() {
       optsHtml += '<button class="quiz-opt" onclick="checkQuiz(this, ' + (opts[j].ok ? 'true' : 'false') + ')">' + esc(opts[j].t) + '</button>';
     }
     body.innerHTML =
-      '<div class="card-top"><span>' + esc(STORY.id) + ' · ' + esc(lang.name) + ' 빈칸 듣기</span>' +
-      '<span><span id="quiz-tts-voice-info">' + esc(voiceStatusBase(lang)) + '</span></span></div>' +
+      '<div class="card-top"><span>' + esc(fromSid) + ' · ' + esc(lang.name) + ' 빈칸 듣기</span>' +
+      '<span>' + (quizScope() === 'all' ? '<span class="chip">출제 ' + esc(fromSid) + ' · 전체 랜덤</span> ' : '') + '<span id="quiz-tts-voice-info">' + esc(voiceStatusBase(lang)) + '</span></span></div>' +
       '<div class="card-top" style="margin-bottom:6px;"><span>소리를 듣고 빈칸에 들어갈 낱말을 고르세요</span></div>' +
       '<div class="q-blank">' + esc(shown).replace('____', '<span class="blank">____</span>') + '</div>' +
       '<div class="quiz-audio">' +
@@ -954,9 +1209,16 @@ function newQuiz() {
       '</div>' + optsHtml +
       '<div class="q-feedback" id="q-feedback"></div>';
   } else {
-    var correct = lang.sents[qi];
-    var pool2 = [];
-    for (var m = 0; m < lang.sents.length; m++) if (m !== qi) pool2.push(lang.sents[m]);
+    var correct = items[qi].s;
+    var fromSid2 = items[qi].sid;
+    var pool2 = [], seenK = {};
+    seenK[correct.k] = 1;
+    for (var m = 0; m < items.length && pool2.length < 150; m++) {
+      if (items[m].s === correct) continue;
+      if (seenK[items[m].s.k]) continue;
+      seenK[items[m].s.k] = 1;
+      pool2.push(items[m].s);
+    }
     shuffle(pool2);
     var options = shuffle([correct, pool2[0], pool2[1], pool2[2]]);
     var html = '';
@@ -966,9 +1228,12 @@ function newQuiz() {
     }
     quizState.correct = correct.k;
     quizState.sent = correct;
+    quizState.langObj = lang;
+    quizState.sid = fromSid2;
     body.innerHTML =
-      '<div class="card-top"><span>' + esc(STORY.id) + ' · ' + esc(lang.name) + ' 뜻 맞추기</span>' +
-      '<span>' + ordinal(qi) + ' 문장 · <span id="quiz-tts-voice-info">' + esc(voiceStatusBase(lang)) + '</span></span></div>' +
+      '<div class="card-top"><span>' + esc(fromSid2) + ' · ' + esc(lang.name) + ' 뜻 맞추기</span>' +
+      '<span>' + (quizScope() === 'all' ? '<span class="chip">출제 ' + esc(fromSid2) + ' · 전체 랜덤</span>' : (ordinal(qi) + ' 문장')) +
+      ' · <span id="quiz-tts-voice-info">' + esc(voiceStatusBase(lang)) + '</span></span></div>' +
       (correct.lb ? '<span class="label-chip ' + (correct.lb === '질문' ? 'q' : 'a') + '">' + esc(correct.lb) + '</span>' : '') +
       '<div class="orig-text">' + esc(correct.o) + '</div>' +
       (correct.p ? '<div style="color:var(--muted); margin-bottom:10px;">발음: ' + formatTags(correct.p) + '</div>' : '') +
@@ -983,7 +1248,7 @@ function newQuiz() {
   refreshQuizVoiceStatus();
 }
 function quizSpeak(mult) {
-  var lang = quizLang();
+  var lang = quizState.langObj || quizLang();
   if (!lang || !quizState.sent) return;
   speakText(quizState.sent.o, lang, speed * (mult === 0.7 ? 0.7 : 1), 'quiz-tts-voice-info');
 }
@@ -1236,6 +1501,7 @@ function boot() {
         esc(err.message) + '<br><br>https://aenngel.github.io/LingQ-practice/ 주소로 열어 주세요.<br>(파일을 직접 열면 회차 데이터를 읽을 수 없습니다.)</div>';
     });
   initVoices();
+  loadAudioIndex();
 }
 window.addEventListener('hashchange', function () {
   var h = (location.hash || '').replace('#', '').split('/');
