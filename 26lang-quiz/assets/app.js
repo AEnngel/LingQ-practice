@@ -982,6 +982,47 @@ function bindSayList(says) {
   });
 }
 
+/* ---- 공부하기: 가이드 안 검색 ---- */
+const BLOCK_NAME = { h: '제목', p: '설명', l: '목록', tb: '표', ex: '예문', n: '참고' };
+function studyBlockText(b) {
+  if (b.t === 'h' || b.t === 'p' || b.t === 'n') return plainText(b.x);
+  if (b.t === 'l') return (b.x || []).map(plainText).join(' · ');
+  if (b.t === 'tb') return [].concat(b.h || [], ...(b.r || []).map(r => r)).map(plainText).join(' · ');
+  if (b.t === 'ex') return [b.x, b.p, b.k, b.n].filter(Boolean).map(plainText).join(' · ');
+  return '';
+}
+function studySearch(parts, ql) {
+  const hits = [];
+  parts.forEach((p, pi) => {
+    const head = [p.part, p.title, p.sub].filter(Boolean).join(' ');
+    const at = head.toLowerCase().indexOf(ql);
+    if (at >= 0) hits.push({ pi, part: p.part, title: p.title, kind: 'part', text: head, at });
+    p.blocks.forEach(b => {
+      const t = studyBlockText(b);
+      const k = t.toLowerCase().indexOf(ql);
+      if (k < 0) return;
+      hits.push({ pi, part: p.part, title: p.title, kind: b.t, text: t, at: k });
+    });
+  });
+  return hits;
+}
+function snippetAt(text, at, ql) {
+  const start = Math.max(0, at - 40);
+  const end = Math.min(text.length, at + ql.length + 90);
+  return (start > 0 ? '… ' : '') + text.slice(start, end).trim() + (end < text.length ? ' …' : '');
+}
+function markQuery(text, ql) {
+  const low = String(text).toLowerCase();
+  let i = low.indexOf(ql), cur = 0, out = '';
+  if (i < 0) return esc(text);
+  while (i >= 0) {
+    out += esc(text.slice(cur, i)) + '<mark>' + esc(text.slice(i, i + ql.length)) + '</mark>';
+    cur = i + ql.length;
+    i = low.indexOf(ql, cur);
+  }
+  return out + esc(text.slice(cur));
+}
+
 async function renderStudyView(sIdx, s) {
   const guides = sIdx.guides;
   const guide = guides.find(g => g.key === s.guide) || guides[0];
@@ -1021,21 +1062,32 @@ async function renderStudyView(sIdx, s) {
         <select id="stGuide">${guides.map(g => `<option value="${g.key}" ${g.key === guide.key ? 'selected' : ''}>${esc(g.label || CODE_KO[LANG_CODE[g.lang]] || g.key)} — ${g.parts}파트 · 예문 ${g.examples}</option>`).join('')}</select>
       </div>
       <div class="field">
-        <label>파트</label>
-        <select id="stPart">${parts.map((x, i) => `<option value="${i}" ${i === s.part ? 'selected' : ''}>${esc(x.part)} ${esc(x.title)}</option>`).join('')}</select>
+        <label>공부 내용 검색</label>
+        <div class="findrow">
+          <input id="stFind" type="search" class="find" autocomplete="off" enterkeyhint="search"
+            placeholder="이 가이드에서 찾기 — 파트·설명·표·예문" value="${esc(s.q || '')}">
+          <button type="button" id="stFindClear" class="btn plain sm" aria-label="검색어 지우기" title="검색어 지우기">✕</button>
+        </div>
+        <div id="stCount" class="findcount"></div>
       </div>
-      ${toc.length > 2 ? `<div class="field">
-        <label>이 파트 목차</label>
-        <select id="stJump"><option value="">— 이동할 곳 —</option>${toc.map(t => `<option value="${t.id}">${esc(t.x)}</option>`).join('')}</select>
-      </div>` : ''}
-      <div class="row">
-        <button class="btn plain sm" data-prev="1" ${s.part === 0 ? 'disabled' : ''}>← 이전</button>
-        <button class="btn plain sm" data-next="1" ${s.part >= parts.length - 1 ? 'disabled' : ''}>다음 →</button>
-        <button class="btn sm secondary" data-topractice="1">이 언어로 문제 풀기</button>
+      <div id="stNav">
+        <div class="field">
+          <label>파트</label>
+          <select id="stPart">${parts.map((x, i) => `<option value="${i}" ${i === s.part ? 'selected' : ''}>${esc(x.part)} ${esc(x.title)}</option>`).join('')}</select>
+        </div>
+        ${toc.length > 2 ? `<div class="field">
+          <label>이 파트 목차</label>
+          <select id="stJump"><option value="">— 이동할 곳 —</option>${toc.map(t => `<option value="${t.id}">${esc(t.x)}</option>`).join('')}</select>
+        </div>` : ''}
+        <div class="row">
+          <button class="btn plain sm" data-prev="1" ${s.part === 0 ? 'disabled' : ''}>← 이전</button>
+          <button class="btn plain sm" data-next="1" ${s.part >= parts.length - 1 ? 'disabled' : ''}>다음 →</button>
+          <button class="btn sm secondary" data-topractice="1">이 언어로 문제 풀기</button>
+        </div>
       </div>
       <div id="stVoice" class="voiceline"></div>
     </div>
-    <div class="card study">
+    <div class="card study" id="stBody">
       <div class="study-head">
         <div class="study-num">${esc(p.part)}</div>
         <h2>${esc(p.title)}</h2>
@@ -1047,6 +1099,7 @@ async function renderStudyView(sIdx, s) {
         <button class="btn plain sm" data-next="1" ${s.part >= parts.length - 1 ? 'disabled' : ''}>다음 파트 →</button>
       </div>
     </div>
+    <div id="stHits" hidden></div>
   </div>`;
 
   fillVoiceLine($('#stVoice'), code, name);
@@ -1064,6 +1117,51 @@ async function renderStudyView(sIdx, s) {
   $$('[data-view]', app).forEach(b => b.onclick = () => { s.view = b.dataset.view; renderGrammarSetup(); });
   const tp = $('[data-topractice]', app);
   if (tp) tp.onclick = () => { s.view = 'quiz'; s.glang = guide.lang; renderGrammarSetup(); };
+
+  /* ---- 검색 ---- */
+  const find = $('#stFind'), hitsBox = $('#stHits'), countBox = $('#stCount');
+  const navBox = $('#stNav'), bodyBox = $('#stBody'), clearBtn = $('#stFindClear');
+  const runFind = () => {
+    const q = find.value.trim();
+    s.q = q;
+    clearBtn.hidden = !q;
+    if (!q) {
+      hitsBox.hidden = true; hitsBox.innerHTML = '';
+      bodyBox.hidden = false; navBox.hidden = false;
+      countBox.textContent = ''; countBox.classList.remove('on');
+      return;
+    }
+    const ql = q.toLowerCase();
+    const hits = studySearch(parts, ql);
+    const nPart = new Set(hits.map(h => h.pi)).size;
+    bodyBox.hidden = true; navBox.hidden = true; hitsBox.hidden = false;
+    countBox.classList.add('on');
+    countBox.innerHTML = hits.length
+      ? `🔍 <b>${esc(q)}</b> · ${hits.length}개 항목 · ${nPart}개 파트`
+      : `🔍 <b>${esc(q)}</b> · 맞는 내용이 없어요`;
+    const MAX = 200;
+    hitsBox.innerHTML = `<div class="card study">
+      <div class="study-head">
+        <div class="study-num">🔍 검색</div>
+        <h2>${esc(q)}</h2>
+        <p class="desc">${hits.length ? `${esc(name)} 가이드에서 ${hits.length}개 항목을 찾았습니다. 항목을 누르면 그 파트로 이동합니다.` : '맞는 내용이 없어요. 다른 낱말로 찾아보세요 — 예: 복수, 발음, 시제, 카페.'}</p>
+      </div>
+      ${hits.length ? hits.slice(0, MAX).map(h => `<button type="button" class="hit" data-hit="${h.pi}">
+        <span class="hit-kind">${h.kind === 'part' ? '파트 제목' : (BLOCK_NAME[h.kind] || '본문')}</span>
+        <span class="hit-part">${esc(h.part)} ${esc(h.title)}</span>
+        <span class="hit-text">${markQuery(snippetAt(h.text, h.at, ql), ql)}</span>
+      </button>`).join('') : ''}
+      ${hits.length > MAX ? `<p class="desc">앞의 ${MAX}개만 보여 줍니다. 검색어를 더 넣어 좁혀 보세요.</p>` : ''}
+    </div>`;
+    $$('[data-hit]', hitsBox).forEach(b => b.onclick = () => {
+      s.part = Number(b.dataset.hit); s.q = ''; renderGrammarSetup();
+    });
+  };
+  find.oninput = runFind;
+  find.onkeydown = e => { if (e.key === 'Escape') { find.value = ''; runFind(); } };
+  clearBtn.onclick = () => { find.value = ''; runFind(); find.focus(); };
+  if (s.q) runFind();
+
   bindSayList(says);
   window.scrollTo(0, 0);
 }
