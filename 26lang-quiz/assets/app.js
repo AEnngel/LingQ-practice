@@ -59,6 +59,95 @@ const ORDER_HINT = {
   25: '주어 → 동사 → 목적어', 26: '주어 → 동사 → 목적어'
 };
 function orderHintOf(no) { return ORDER_HINT[no] || ''; }
+/* 언어별 어순 규칙 한 줄 설명 (어순 고르기의 상세 힌트·해설) */
+const ORDER_TIP = {
+  2: '평서문은 주어 → 동사 → 목적어. 의문문은 조동사가 맨 앞에 오고, 관사·형용사는 명사 앞에 붙습니다.',
+  3: '영어와 같이 주어 → 동사 → 목적어이고, 조동사·의문사가 맨 앞에 옵니다.',
+  4: '정동사는 언제나 두 번째 자리, 나머지 동사(분사·원형)는 문장 끝으로 갑니다.',
+  5: '주어 → 동사 → 목적어. 형용사는 대개 명사 뒤에 오고 목적어 대명사는 동사 앞에 섭니다.',
+  6: '주어 → 동사 → 목적어. 형용사는 명사 뒤에 오고 주어 대명사는 자주 생략합니다.',
+  7: '주어 → 동사 → 목적어. 형용사는 명사 뒤에 옵니다.',
+  8: '주어 → 동사 → 목적어. 형용사는 명사 뒤에 오고 목적어 대명사는 동사 앞에 섭니다.',
+  9: '동사가 대개 문장 끝에 옵니다. 어순은 자유롭고 격어미가 역할을 정합니다.',
+  10: '정동사는 두 번째 자리, 나머지 동사·분사는 문장 끝으로 갑니다.',
+  11: '영어와 같이 주어 → 동사 → 목적어이고, 조동사가 맨 앞에 옵니다.',
+  12: '동사 → 주어 → 목적어 순서이고, 형용사는 명사 뒤에 옵니다.',
+  13: '정동사는 두 번째 자리이고 기본은 주어 → 동사 → 목적어입니다.',
+  14: '정동사는 두 번째 자리이고 기본은 주어 → 동사 → 목적어입니다.',
+  15: '정동사는 두 번째 자리이고 기본은 주어 → 동사 → 목적어입니다.',
+  16: '정동사는 두 번째 자리이고 기본은 주어 → 동사 → 목적어입니다.',
+  17: '어순이 자유롭고 격어미가 역할을 정합니다. 기본은 주어 → 동사 → 목적어입니다.',
+  18: '어순이 자유롭습니다. 강조하는 말이 동사 바로 앞에 옵니다.',
+  19: '격어미가 역할을 정해 어순이 자유롭습니다. 기본은 주어 → 동사 → 목적어입니다.',
+  20: '격어미가 역할을 정하는 자유 어순이고, 기본은 주어 → 동사 → 목적어입니다.',
+  21: '격어미가 역할을 정하는 자유 어순이고, 새 정보가 문장 끝에 옵니다.',
+  22: '주어 → 동사 → 목적어. 형용사는 명사 뒤에 오고 목적어 대명사는 동사 앞에 섭니다.',
+  23: '정동사는 두 번째 자리이고 기본은 주어 → 동사 → 목적어입니다.'
+};
+const ROLE_MOD = ['관사', '형용사', '수사', '소유격', '지시사'];
+const ROLE_HEAD = ['명사', '목적어', '보어'];
+
+/* 어순 고르기: 문제 풀기 전 상세 힌트 (문장 뼈대 + 단어 뜻, 원어 철자는 감춤) */
+function pickHint(no, o, lname) {
+  if (!o || !o.t || !o.t.length) return null;
+  const roles = (o.r || []).map(x => String(x || '').trim());
+  const means = (o.m || []).map(x => String(x || '').trim());
+  const words = [];
+  means.forEach(m => { if (m && words.indexOf(m) < 0) words.push(m); });
+  words.sort((a, b) => a.localeCompare(b, 'ko'));
+  const h = {
+    lname: lname || '',
+    rule: ORDER_HINT[no] || '',
+    tip: ORDER_TIP[no] || '',
+    skeleton: roles.filter(Boolean).join(' → '),
+    words: words.join(' · ')
+  };
+  return (h.rule || h.skeleton || h.words) ? h : null;
+}
+
+/* 어순 고르기: 정답 후 해설 — 단어별 원어·역할·뜻, 발음, 역할 순서, 왜 이 순서인지 */
+function pickNotes(o) {
+  const r = (o.r || []).map(x => String(x || '').trim());
+  const t = (o.t || []).map(x => String(x || '').trim());
+  const cut = x => String(x || '').replace(/^[\s.,!?;:·'"()\[\]…—–-]+|[\s.,!?;:·'"()\[\]…—–-]+$/g, '');
+  const out = [];
+  if (!r.length || r.length !== t.length) return out;
+  const subj = r.indexOf('주어');
+  if (r[0] === '조동사') out.push(`조동사 ${cut(t[0])}가 문장 맨 앞에 와서 의문문을 만듭니다.`);
+  else if (r[0] === '의문사') out.push(`의문사 ${cut(t[0])}가 문장 맨 앞에 옵니다.`);
+  else if (r[0] === '동사' && r.length > 2) {
+    out.push(subj > 0 ? `동사 ${cut(t[0])}가 주어보다 앞에 오는 어순입니다.` : `동사 ${cut(t[0])}로 시작하는 명령문 어순입니다.`);
+  }
+  const chunks = [];
+  for (let i = 0; i + 1 < r.length; i++) {
+    if (ROLE_MOD.indexOf(r[i]) >= 0 && ROLE_HEAD.indexOf(r[i + 1]) >= 0) chunks.push(`${cut(t[i])} ${cut(t[i + 1])}`);
+  }
+  if (chunks.length) out.push(`꾸미는 말이 명사 앞에 붙어 ${chunks.slice(0, 2).map(x => `'${x}'`).join(', ')}처럼 한 덩어리를 이룹니다.`);
+  const pi = r.indexOf('전치사');
+  if (pi >= 0 && pi + 1 < r.length && ROLE_HEAD.indexOf(r[pi + 1]) >= 0 && !chunks.length) {
+    out.push(`전치사 ${cut(t[pi])}는 명사 앞에 붙습니다.`);
+  }
+  const last = r.length - 1;
+  if (last > 1 && /동사$/.test(r[last]) && out.length < 2) {
+    out.push(`동사 ${cut(t[last])}가 문장 끝에 옵니다.`);
+  }
+  return out.slice(0, 2);
+}
+
+function pickWhy(no, o) {
+  if (!o || !o.t || !o.t.length) return '';
+  const t = o.t, r = o.r || [], m = o.m || [];
+  const chips = t.map((w, i) => {
+    const bits = [r[i], m[i]].filter(Boolean).join(' · ');
+    return `<span class="w"><b>${esc(w)}</b>${bits ? `<i>${esc(bits)}</i>` : ''}</span>`;
+  }).join('');
+  const notes = pickNotes(o);
+  return `<div class="pickmap">${chips}</div>` +
+    (o.p ? `<div class="pickpron">발음 ${esc(o.p)}</div>` : '') +
+    (r.length ? `<div class="pickseq">${esc(r.join(' → '))}</div>` : '') +
+    (notes.length ? `<ul class="picknotes">${notes.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '') +
+    (ORDER_TIP[no] ? `<div class="picktipline">${esc(ORDER_TIP[no])}</div>` : '');
+}
 /* 타일 표시: 단어 (역할 · 뜻) */
 function tileHtml(word, role, cls, attr, mean) {
   const bits = [role, mean].filter(Boolean).map(esc).join(' · ');
@@ -625,9 +714,27 @@ function startQuiz(quiz) {
   TTS.stop();
   const sc = pickSayCode(quiz.items);
   if (sc) curSayCode = sc;
-  state.quiz = { title: quiz.title, mode: quiz.mode, items: quiz.items, idx: 0, answers: [], revealed: false, picked: -1 };
+  state.quiz = { title: quiz.title, mode: quiz.mode, items: quiz.items, idx: 0, answers: [], revealed: false, picked: -1, hintOpen: false };
   renderQuiz();
   window.scrollTo(0, 0);
+}
+
+/* 어순 고르기 상세 힌트 — 어순 규칙은 늘 보이고, 문장 뼈대·단어 뜻은 접었다 편다 */
+function hintBlockHtml(it, open) {
+  const h = it.hint;
+  if (!h) return '';
+  return `<div class="qhint">
+      <div class="qhintrow">
+        ${h.rule ? `<span class="ohint">${esc(h.lname ? h.lname + ' 어순' : '어순')} <b>${esc(h.rule)}</b></span>` : ''}
+        <button type="button" class="qhintbtn" data-hint="1" aria-expanded="${open ? 'true' : 'false'}">${open ? '💡 상세 힌트 접기' : '💡 상세 힌트 보기'}</button>
+      </div>
+      <div class="qhintbox"${open ? '' : ' hidden'}>
+        ${h.skeleton ? `<div class="hrow"><span class="hk">문장 뼈대</span><span class="hv">${esc(h.skeleton)}</span></div>` : ''}
+        ${h.words ? `<div class="hrow"><span class="hk">단어 뜻</span><span class="hv">${esc(h.words)}</span></div>` : ''}
+        ${h.tip ? `<div class="hrow"><span class="hk">어순 규칙</span><span class="hv">${esc(h.tip)}</span></div>` : ''}
+        <div class="hnote">뼈대는 역할 순서, 단어 뜻은 가나다순이에요. 어느 단어가 어느 역할인지 스스로 맞춰 보세요.</div>
+      </div>
+    </div>`;
 }
 
 function renderQuiz() {
@@ -685,6 +792,7 @@ function renderQuiz() {
     <div class="card">
       <div class="qtext">${it.prompt}${it.sayPrompt && it.sayPrompt.t ? spkBtn('p') : ''}</div>
       ${it.sub ? `<div class="qsub">${it.sub}</div>` : ''}
+      ${it.hint ? hintBlockHtml(it, q.hintOpen) : ''}
       ${opts}
       ${body}
     </div>
@@ -692,6 +800,18 @@ function renderQuiz() {
   </div>`;
 
   $$('[data-opt]', app).forEach(b => b.onclick = () => pickOption(Number(b.dataset.opt)));
+  const hb = $('[data-hint]', app);
+  if (hb) hb.onclick = () => {
+    q.hintOpen = !q.hintOpen;
+    const box = $('.qhintbox', app);
+    if (box) {
+      box.hidden = !q.hintOpen;
+      hb.textContent = q.hintOpen ? '💡 상세 힌트 접기' : '💡 상세 힌트 보기';
+      hb.setAttribute('aria-expanded', q.hintOpen ? 'true' : 'false');
+    } else {
+      renderQuiz();
+    }
+  };
   bindSpeak(k => k === 'p' ? it.sayPrompt : k === 'a' ? it.sayAnswer : k === 'x' ? it.sayExtra
     : (it.opts && it.opts[Number(k.slice(2))] ? it.opts[Number(k.slice(2))].say : null));
   bindRate(() => { const d = (it.sayPrompt && it.sayPrompt.t) ? it.sayPrompt : (it.opts || []).map(o => o.say).find(x => x && x.t); if (d) TTS.say(d.t, d.c, null, d.n); });
@@ -728,7 +848,7 @@ function selfGrade(ok) {
 function nextQuestion() {
   const q = state.quiz;
   TTS.stop();
-  q.idx += 1; q.revealed = false; q.picked = -1;
+  q.idx += 1; q.revealed = false; q.picked = -1; q.hintOpen = false;
   renderQuiz();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -750,6 +870,7 @@ function payloadOf(it) {
   return {
     key: it.key || (it.prompt + '|' + (it.answer || '')).slice(0, 120),
     kind: it.kind, prompt: it.prompt, sub: it.sub || '', opts: it.opts || [],
+    hint: it.hint || null,
     correct: it.correct == null ? -1 : it.correct, answer: it.answer || '',
     why: it.why || '', extra: it.extra || '', title: it.title || '',
     sayP: it.sayPrompt || null, sayA: it.sayAnswer || null, sayX: it.sayExtra || null
@@ -767,6 +888,7 @@ function itemFromPayload(p) {
       pron: p.pron || '', why: p.why || '', say: p.sayA || null };
   }
   return { kind: p.kind === 'self' ? 'self' : 'mc', prompt: p.prompt, sub: p.sub, opts: p.opts,
+    hint: p.hint || null,
     correct: p.correct, answer: p.answer, why: p.why, extra: p.extra, key: p.key, title: p.title,
     sayPrompt: p.sayP || null, sayAnswer: p.sayA || null, sayExtra: p.sayX || null };
 }
@@ -1427,16 +1549,22 @@ async function renderGrammarSetup() {
           };
         });
       } else if (s.game === 'pick') {
-        items = sample(data.pick, s.gn).map(c => ({
-          kind: 'mc', title: `${lname} · 어순`,
-          prompt: `<div class="qtext">어순이 맞는 문장을 고르세요</div>`,
-          sub: `<b>뜻</b> ${esc(c.ko)}`,
-          opts: c.opts.map(s2 => ({ html: esc(s2) })),
-          correct: c.c,
-          answer: esc(c.a),
-          why: '', sayAnswer: sayOf(c.a),
-          key: `g:p:${s.glang}:${c.a}`
-        }));
+        const byAnswer = {};
+        (data.order || []).forEach(o => { if (o && o.a && !byAnswer[o.a]) byAnswer[o.a] = o; });
+        items = sample(data.pick, s.gn).map(c => {
+          const o = byAnswer[c.a] || null;
+          return {
+            kind: 'mc', title: `${lname} · 어순`,
+            prompt: `<div class="qtext">어순이 맞는 문장을 고르세요</div>`,
+            sub: `<b>뜻</b> ${esc(c.ko)}`,
+            hint: pickHint(s.glang, o, lname),
+            opts: c.opts.map(s2 => ({ html: esc(s2) })),
+            correct: c.c,
+            answer: esc(c.a),
+            why: pickWhy(s.glang, o), sayAnswer: sayOf(c.a),
+            key: `g:p:${s.glang}:${c.a}`
+          };
+        });
       }
       if (!items.length) { alert('이 언어에는 아직 문제가 없어요. 다른 언어를 골라 주세요.'); return; }
       lastBuilder = runGame;
