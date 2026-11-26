@@ -725,7 +725,7 @@ function hintBlockHtml(it, open) {
   if (!h) return '';
   return `<div class="qhint">
       <div class="qhintrow">
-        ${h.rule ? `<span class="ohint">${esc(h.lname ? h.lname + ' 어순' : '어순')} <b>${esc(h.rule)}</b></span>` : ''}
+        ${h.rule ? `<span class="ohint">어순 힌트 <b>${esc(h.rule)}</b></span>` : ''}
         <button type="button" class="qhintbtn" data-hint="1" aria-expanded="${open ? 'true' : 'false'}">${open ? '💡 상세 힌트 접기' : '💡 상세 힌트 보기'}</button>
       </div>
       <div class="qhintbox"${open ? '' : ' hidden'}>
