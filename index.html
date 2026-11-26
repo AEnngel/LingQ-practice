@@ -184,6 +184,42 @@
 </style>
 </head>
 <body>
+<!-- ===== 통합 상단 내비게이션 ===== -->
+<style>
+  /* 통합 상단 내비게이션 (미니스토리 · 26개 언어 퀴즈 · 감정 단어 78) */
+  .gnav{position:sticky;top:0;z-index:9000;display:flex;align-items:stretch;justify-content:center;gap:4px;
+    padding:calc(5px + env(safe-area-inset-top)) 6px 5px;background:#1b2a4a;
+    box-shadow:0 2px 8px rgba(10,18,35,.22);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;}
+  .gnav a{flex:1 1 0;min-width:0;max-width:200px;height:30px;display:flex;align-items:center;justify-content:center;gap:4px;
+    padding:0 6px;border-radius:8px;color:#c8d4e6;font-size:11.5px;font-weight:700;line-height:1;
+    letter-spacing:-.02em;text-decoration:none;white-space:nowrap;
+    -webkit-tap-highlight-color:transparent;transition:background .15s ease,color .15s ease;}
+  .gnav a .gi{flex:none;font-size:13px;line-height:1;}
+  .gnav a .gt{overflow:hidden;text-overflow:ellipsis;}
+  .gnav a[aria-current="page"]{background:#fff;color:#16233c;box-shadow:0 1px 3px rgba(0,0,0,.28);}
+  @media (hover:hover){.gnav a:hover:not([aria-current]){background:rgba(255,255,255,.12);color:#fff;}}
+  @media (max-width:359px){.gnav a{font-size:10.5px;gap:3px;padding:0 4px;}.gnav a .gi{font-size:12px;}}
+</style>
+<style>
+  /* 통합 바 높이만큼 기존 스티키 헤더를 아래로 내려 겹침을 막는다 */
+  .gnav ~ header { top: var(--gnav-h, 40px); }
+</style>
+<nav class="gnav" aria-label="학습 도구 이동">
+  <a href="./" aria-current="page"><span class="gi">📖</span><span class="gt">미니스토리</span></a>
+  <a href="./26lang-quiz/"><span class="gi">📝</span><span class="gt">26개 언어 퀴즈</span></a>
+  <a href="./rmet-quiz/"><span class="gi">🧠</span><span class="gt">감정 단어 78</span></a>
+</nav>
+<script>
+(function(){
+  var n=document.querySelector('.gnav'); if(!n) return;
+  function set(){ document.documentElement.style.setProperty('--gnav-h', n.getBoundingClientRect().height+'px'); }
+  set();
+  window.addEventListener('resize', set);
+  window.addEventListener('orientationchange', set);
+  if (window.visualViewport) { window.visualViewport.addEventListener('resize', set); }
+})();
+</script>
 <header>
   <div class="header-inner">
     <div class="title-row">
