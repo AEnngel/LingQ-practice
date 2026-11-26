@@ -287,6 +287,10 @@ const TTS = (() => {
     try { synth.cancel(); } catch (e) { }
   }
   function stop() { release(); }
+  /* 단독 대문자 한 글자(영어 대명사 "I" 등)를 그대로 넘기면 안드로이드 TTS가 "capital I"처럼
+     읽는다. 화면 글자는 그대로 두고 발화용 문자열에서만 소문자로 바꾼다("I" → "i"). */
+  const SINGLE_CAP = /(^|[\s"'“‘(\[])([A-Z])(?=$|[\s"'”’)\],.;:!?…])/g;
+  const speakable = t => t.replace(SINGLE_CAP, (m, pre, ch) => pre + ch.toLowerCase());
   function say(text, code, el, name) {
     const t = String(text == null ? '' : text).replace(/\s+/g, ' ').trim();
     if (!t) return false;
@@ -299,7 +303,7 @@ const TTS = (() => {
     const v = p ? p.voice : null;
     const busy = !!(curUtt || synth.speaking || synth.pending);
     if (busy) release();   /* cancel() 직후 같은 tick의 speak()는 삼성 인터넷·크롬에서 무시되므로 이때만 잠깐 미룬다 */
-    const u = new SpeechSynthesisUtterance(t);
+    const u = new SpeechSynthesisUtterance(speakable(t));
     if (v) { u.voice = v; u.lang = v.lang || lang; } else { u.lang = lang; }
     u.rate = Math.min(3, Math.max(0.3, Number(SET.rate) || 1));
     u.pitch = 1;
@@ -744,6 +748,107 @@ function hintBlockHtml(it, open) {
     </div>`;
 }
 
+/* 받침에 맞춰 조사를 고른다('주어로' / '소유격으로') */
+function josa(w, a, b) {
+  const s = String(w || '');
+  const code = s.charCodeAt(s.length - 1);
+  const has = code >= 0xAC00 && code <= 0xD7A3 && (code - 0xAC00) % 28 !== 0;
+  return s + (has ? b : a);
+}
+
+/* 문장 순서: 이 문장에만 해당하는 팁 — 역할·뜻만 쓰고 원어 철자는 드러내지 않는다 */
+function orderTipsOf(r, m, ans, glang) {
+  const out = [];
+  if (!r || !r.length) return out;
+  const mean = i => String((m && m[i]) || '').trim();
+  const isHead = x => ROLE_HEAD.indexOf(x) >= 0;
+  const isMod = x => ROLE_MOD.indexOf(x) >= 0 || x === '형용사';
+  const headUsed = {};
+  /* 같은 명사를 두 번 설명하지 않는다 */
+  const headTail = (i, label) => {
+    if (headUsed[i]) return '';
+    headUsed[i] = 1;
+    const h = mean(i);
+    return h ? ` — ${label || r[i] || '명사'} 뜻 '${h}'` : '';
+  };
+
+  /* 1) 맨 앞 단어: 뜻과 역할만 알려 준다 */
+  const first = mean(0);
+  if (first) {
+    const role = r[0];
+    if (role === '조동사') out.push(`맨 앞 단어 뜻은 '${first}' — 조동사가 맨 앞에 와서 의문문을 만듭니다.`);
+    else if (role === '의문사') out.push(`맨 앞 단어 뜻은 '${first}' — 의문사가 맨 앞에서 무엇을 묻는지 정합니다.`);
+    else if (role === '동사') out.push(/\?\s*$/.test(String(ans || ''))
+      ? `맨 앞 단어 뜻은 '${first}' — 동사가 맨 앞에 와서 예/아니오 의문문을 만듭니다.`
+      : `맨 앞 단어 뜻은 '${first}' — 동사로 시작하는 명령문입니다.`);
+    else out.push(`맨 앞 단어 뜻은 '${first}' — ${josa(role, '로', '으로')} 시작합니다.`);
+  }
+
+  /* 2) 동사 + 보어: 'was stuck'처럼 붙여 쓰는 덩어리 */
+  const vi = r.indexOf('동사');
+  if (vi >= 0 && r[vi + 1] === '보어') {
+    const a = mean(vi), b = mean(vi + 1);
+    const bits = [a ? `동사 '${a}'` : '동사', b ? `보어 '${b}'` : '보어'].join(' + ');
+    out.push(`${bits}처럼 동사와 그 뒤 말은 한 덩어리로 붙여 씁니다.`);
+    headUsed[vi + 1] = headUsed[vi + 1] || 0;
+  }
+
+  /* 3) 관사·소유격·지시사·수사·형용사 + 명사 = 한 덩어리 */
+  for (let i = 0; i < r.length - 1; i++) {
+    if (!isMod(r[i])) continue;
+    let j = i;
+    while (j < r.length && isMod(r[j])) j++;
+    if (j < r.length && isHead(r[j])) {
+      const mods = r.slice(i, j).filter((x, k, arr) => arr.indexOf(x) === k);
+      out.push(`${mods.join('·')} + ${josa(r[j], '는', '은')} 한 덩어리로 붙습니다${headTail(j)}.`);
+      break;
+    }
+  }
+
+  /* 4) 전치사는 뒤에 오는 명사 앞에 */
+  const pi = r.indexOf('전치사');
+  if (pi >= 0) {
+    let j = pi + 1;
+    while (j < r.length && isMod(r[j])) j++;
+    out.push(`전치사는 뒤에 오는 명사 앞에 붙습니다${j < r.length ? headTail(j, '명사') : ''}.`);
+  }
+
+  /* 5) 동사 뒤 목적어 */
+  const oi = r.indexOf('목적어');
+  if (oi > 0 && r.lastIndexOf('동사', oi) >= 0) {
+    out.push(`동사 뒤에 목적어가 옵니다${headTail(oi, '목적어')}.`);
+  }
+
+  /* 6) 동사가 문장 끝(SOV) */
+  const last = r.length - 1;
+  const sov = /목적어 → 동사/.test(ORDER_HINT[glang] || '');
+  if (sov && last > 1 && /동사$/.test(r[last])) out.push(`동사가 문장 맨 끝(${last + 1}번째)에 옵니다.`);
+
+  return out.slice(0, 3);
+}
+
+/* 문장 순서 상세 힌트 — 어순 힌트는 늘 보이고, 문장 뼈대·문장 팁은 접었다 편다 */
+function orderHintHtml(it, open) {
+  const r = (it.rolesAns || []).map(x => String(x || '').trim());
+  const m = (it.meaningsAns || []).map(x => String(x || '').trim());
+  const skeleton = r.filter(Boolean).join(' → ');
+  const tips = orderTipsOf(r, m, it.answer, it.gl);
+  const detail = !!(skeleton || it.tip || tips.length);
+  if (!it.orderHint && !detail) return '';
+  return `<div class="qhint">
+      <div class="qhintrow">
+        ${it.orderHint ? `<span class="ohint">어순 힌트 <b>${esc(it.orderHint)}</b></span>` : ''}
+        ${detail ? `<button type="button" class="qhintbtn" data-ohint="1" aria-expanded="${open ? 'true' : 'false'}">${open ? '💡 상세 힌트 접기' : '💡 상세 힌트 보기'}</button>` : ''}
+      </div>
+      ${detail ? `<div class="qhintbox"${open ? '' : ' hidden'}>
+        ${skeleton ? `<div class="hrow"><span class="hk">문장 뼈대 (정답 역할 순서)</span><span class="hv">${esc(skeleton)}</span></div>` : ''}
+        ${it.tip ? `<div class="hrow"><span class="hk">어순 규칙</span><span class="hv">${esc(it.tip)}</span></div>` : ''}
+        ${tips.length ? `<div class="hrow"><span class="hk">문장 팁</span><span class="hv"><ul class="hlist">${tips.map(x => `<li>${esc(x)}</li>`).join('')}</ul></span></div>` : ''}
+        <div class="hnote">뼈대는 정답 순서의 역할이고 원어 철자는 감췄어요. 타일의 (역할 · 뜻)을 보고 차례를 맞춰 보세요.</div>
+      </div>` : ''}
+    </div>`;
+}
+
 function renderQuiz() {
   const q = state.quiz;
   if (!q) return go(state.tab);
@@ -870,7 +975,8 @@ function payloadOf(it) {
   if (it.kind === 'order') {
     return { key: it.key, kind: 'order', title: it.title || '', prompt: it.prompt, sub: it.sub || '',
       answer: it.answer, tiles: it.tiles || [], roles: it.roles || [], meanings: it.meanings || [],
-      orderHint: it.orderHint || '',
+      orderHint: it.orderHint || '', rolesAns: it.rolesAns || [], meaningsAns: it.meaningsAns || [],
+      tip: it.tip || '', gl: it.gl || 0,
       pron: it.pron || '', opts: [], correct: -1,
       why: it.why || '', extra: '', sayA: it.say || null };
   }
@@ -891,7 +997,8 @@ function itemFromPayload(p) {
   if (p.kind === 'order') {
     return { kind: 'order', title: p.title, key: p.key, prompt: p.prompt, sub: p.sub,
       answer: p.answer, tiles: p.tiles || [], roles: p.roles || [], meanings: p.meanings || [],
-      orderHint: p.orderHint || '',
+      orderHint: p.orderHint || '', rolesAns: p.rolesAns || [], meaningsAns: p.meaningsAns || [],
+      tip: p.tip || '', gl: p.gl || 0,
       pron: p.pron || '', why: p.why || '', say: p.sayA || null };
   }
   return { kind: p.kind === 'self' ? 'self' : 'mc', prompt: p.prompt, sub: p.sub, opts: p.opts,
@@ -1006,7 +1113,7 @@ function renderCard() {
 /* ---------------------------------------------------------------- 어순 배열 */
 function renderOrder() {
   const q = state.quiz, it = q.items[q.idx];
-  if (!q.ord || q.ord.i !== q.idx) q.ord = { i: q.idx, picked: [], done: false, ok: false };
+  if (!q.ord || q.ord.i !== q.idx) q.ord = { i: q.idx, picked: [], done: false, ok: false, hintOpen: false };
   const o = q.ord;
   const pct = Math.round((q.idx / q.items.length) * 100);
   const norm = t => String(t || '').replace(/\s+/g, ' ').trim();
@@ -1027,12 +1134,12 @@ function renderOrder() {
     <div class="progress"><i style="width:${pct}%"></i></div>
     ${rateBarHtml()}
     <div class="orderbar">
-      ${it.orderHint ? `<span class="ohint">어순 힌트 <b>${esc(it.orderHint)}</b></span>` : ''}
       <button type="button" class="sndbtn ${SET.tileSound ? 'on' : ''}" data-tile-sound="1" aria-pressed="${SET.tileSound ? 'true' : 'false'}">${SET.tileSound ? '🔊 단어 소리 켜짐' : '🔇 단어 소리 꺼짐'}</button>
     </div>
     <div class="card">
       ${it.prompt}
       ${it.sub ? `<div class="qsub">${it.sub}</div>` : ''}
+      ${orderHintHtml(it, !!o.hintOpen)}
       <div class="orderbuilt ${o.done ? (o.ok ? 'ok' : 'no') : ''}">${pickedHtml}</div>
       <div class="tiles">${pool.map(x => tileHtml(x.t, roleOf(x.i), 'tile', `data-tile="${x.i}"`, meanOf(x.i))).join('')}</div>
       ${o.done ? `
@@ -1067,6 +1174,8 @@ function renderOrder() {
     if (!SET.tileSound) TTS.stop();
     renderOrder();
   };
+  const hb = $('[data-ohint]', app);
+  if (hb) hb.onclick = () => { o.hintOpen = !o.hintOpen; renderOrder(); };
   $$('[data-unpick]', app).forEach(b => b.onclick = () => {
     if (o.done) return;
     o.picked.splice(Number(b.dataset.unpick), 1);
@@ -1535,6 +1644,7 @@ async function renderGrammarSetup() {
             prompt: `<div class="qtext">${esc(o.ko)}</div>`,
             sub: `<span style="color:var(--ink3)">단어를 순서대로 눌러 ${esc(lname)} 문장을 만드세요.</span>`,
             answer: o.a, tiles: tiles, roles: roles, meanings: meanings, orderHint: orderHintOf(s.glang),
+            rolesAns: (o.r || []).slice(), meaningsAns: (o.m || []).slice(), tip: ORDER_TIP[s.glang] || '', gl: s.glang,
             pron: o.p || '', say: sayOf(o.a), why: '',
             key: `g:o:${s.glang}:${o.a}`
           };
