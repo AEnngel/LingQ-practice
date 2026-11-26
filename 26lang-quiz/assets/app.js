@@ -988,7 +988,7 @@ async function renderStudyView(sIdx, s) {
   s.guide = guide.key;
   const data = await DATA.study(guide.key);
   const code = LANG_CODE[guide.lang] || 'es-ES';
-  const name = CODE_KO[code] || guide.key;
+  const name = guide.label || CODE_KO[code] || guide.key;
   const parts = data.parts;
   if (s.part == null || s.part < 0 || s.part >= parts.length) s.part = 0;
   const p = parts[s.part];
@@ -1018,7 +1018,7 @@ async function renderStudyView(sIdx, s) {
     <div class="card">
       <div class="field">
         <label>문법 가이드</label>
-        <select id="stGuide">${guides.map(g => `<option value="${g.key}" ${g.key === guide.key ? 'selected' : ''}>${esc(CODE_KO[LANG_CODE[g.lang]] || g.key)} — ${g.parts}파트 · 예문 ${g.examples}</option>`).join('')}</select>
+        <select id="stGuide">${guides.map(g => `<option value="${g.key}" ${g.key === guide.key ? 'selected' : ''}>${esc(g.label || CODE_KO[LANG_CODE[g.lang]] || g.key)} — ${g.parts}파트 · 예문 ${g.examples}</option>`).join('')}</select>
       </div>
       <div class="field">
         <label>파트</label>
