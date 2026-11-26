@@ -84,7 +84,7 @@ const ORDER_TIP = {
   22: '주어 → 동사 → 목적어. 형용사는 명사 뒤에 오고 목적어 대명사는 동사 앞에 섭니다.',
   23: '정동사는 두 번째 자리이고 기본은 주어 → 동사 → 목적어입니다.'
 };
-const ROLE_MOD = ['관사', '형용사', '수사', '소유격', '지시사'];
+const ROLE_MOD = ['관사', '소유격', '지시사', '수사'];
 const ROLE_HEAD = ['명사', '목적어', '보어'];
 
 /* 어순 고르기: 문제 풀기 전 상세 힌트 (문장 뼈대 + 단어 뜻, 원어 철자는 감춤) */
@@ -119,8 +119,15 @@ function pickNotes(o) {
     out.push(subj > 0 ? `동사 ${cut(t[0])}가 주어보다 앞에 오는 어순입니다.` : `동사 ${cut(t[0])}로 시작하는 명령문 어순입니다.`);
   }
   const chunks = [];
-  for (let i = 0; i + 1 < r.length; i++) {
-    if (ROLE_MOD.indexOf(r[i]) >= 0 && ROLE_HEAD.indexOf(r[i + 1]) >= 0) chunks.push(`${cut(t[i])} ${cut(t[i + 1])}`);
+  const isArt = x => ROLE_MOD.indexOf(x) >= 0;
+  const isAdj = x => x === '형용사';
+  const isHead = x => ROLE_HEAD.indexOf(x) >= 0;
+  for (let i = 0; i < r.length; i++) {
+    if (!isArt(r[i])) continue;
+    const toks = [];
+    let j = i;
+    while (j < r.length && (isArt(r[j]) || isAdj(r[j]))) { toks.push(cut(t[j])); j++; }
+    if (toks.length && j < r.length && isHead(r[j])) { toks.push(cut(t[j])); chunks.push(toks.join(' ')); i = j; }
   }
   if (chunks.length) out.push(`꾸미는 말이 명사 앞에 붙어 ${chunks.slice(0, 2).map(x => `'${x}'`).join(', ')}처럼 한 덩어리를 이룹니다.`);
   const pi = r.indexOf('전치사');
