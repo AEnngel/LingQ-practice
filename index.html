@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>LingQ 미니 스토리 연습장 v14 — 1a~22a · 64편 · 30개 언어</title>
+<title>LingQ 미니 스토리 연습장 v14 — 1a~22b · 65편 · 30개 언어</title>
 <style>
   :root {
     --bg: #f8fafc;
@@ -223,7 +223,7 @@
 <header>
   <div class="header-inner">
     <div class="title-row">
-      <h1>🌐 LingQ 미니 스토리 연습장 <span class="ver">v14</span> <span class="range">1a~22a · 64편</span></h1>
+      <h1>🌐 LingQ 미니 스토리 연습장 <span class="ver">v14</span> <span class="range">1a~22b · 65편</span></h1>
       <div class="tabs">
         <button class="tab-btn active" data-mode="card">카드 학습</button>
         <button class="tab-btn" data-mode="quiz">퀴즈</button>
@@ -260,7 +260,7 @@
         <button class="btn-primary" onclick="speakSentence()">🔊 듣기</button>
         <button id="btn-playall" onclick="togglePlayAll()" title="이 회차·이 언어의 문장을 처음부터 끝까지">▶️ 전체 듣기</button>
         <button id="btn-playpart" onclick="togglePlayPart()" title="이번 편을 a → b → c 순서로, 지금 회차부터 끊김 없이">🔁 이번 편 이어 듣기</button>
-        <button id="btn-playcourse" onclick="togglePlayCourse()" title="지금 회차부터 마지막 22a까지 자동으로 넘기며 연속 재생">🎧 전체 회차 이어 듣기</button>
+        <button id="btn-playcourse" onclick="togglePlayCourse()" title="지금 회차부터 마지막 22b까지 자동으로 넘기며 연속 재생">🎧 전체 회차 이어 듣기</button>
         <button onclick="showVoiceDiag()">🩺 소리 진단</button>
       </div>
       <div class="btn-row">
@@ -321,9 +321,9 @@
 <script>
 /* =========================================================
    LingQ 미니 스토리 연습장 v14
-   - 회차(1a~22a, 64편) 드롭다운 + stories/{id}.json 동적 로딩
+   - 회차(1a~22b, 65편) 드롭다운 + stories/{id}.json 동적 로딩
    - 배속 0.7/1.0/1.25/1.5/2.0 (카드·연속·비교·퀴즈 모두)
-   - 이어 듣기 3종: 전체 듣기 / 이번 편(a→b→c) / 전체 회차(지금 → 22a)
+   - 이어 듣기 3종: 전체 듣기 / 이번 편(a→b→c) / 전체 회차(지금 → 22b)
    - 퀴즈 출제 범위: 현재 챕터만 / 전체 챕터 랜덤
    - 아이슬란드·아일랜드·웨일스·아프리칸스·라틴어 + 스코츠·셔틀랜드·오크니·스코틀랜드 게일어까지 9개 언어 audio/*.mp3 우선 재생
    - 언어 비교 카드마다 🔊 듣기
@@ -639,7 +639,7 @@ function nextSent() {
   setSent((curSentIdx + 1) % len);
 }
 
-/* ---------- 이어 듣기 (전체 / 이번 편 a→b→c / 전체 회차 → 22a) ---------- */
+/* ---------- 이어 듣기 (전체 / 이번 편 a→b→c / 전체 회차 → 22b) ---------- */
 var SEQ_LABEL = { playall: '▶️ 전체 듣기', playpart: '🔁 이번 편 이어 듣기', playcourse: '🎧 전체 회차 이어 듣기' };
 function curManifestIndex() {
   for (var i = 0; i < MANIFEST.length; i++) if (MANIFEST[i].id === storyId) return i;
