@@ -86,7 +86,11 @@ const TTS = (() => {
   const synth = (typeof window !== 'undefined' && window.speechSynthesis) || null;
   const supported = !!synth && typeof window.SpeechSynthesisUtterance === 'function';
   const waiting = [];
-  let voices = [], ready = false, curEl = null, curUtt = null, timer = null;
+  let voices = [], ready = false, curEl = null, curUtt = null, timer = null, warned = false;
+  /* 앱 안 브라우저(WebView)에서는 음성 재생이 막히는 경우가 많아 미리 알려 준다 */
+  const UA = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+  const inApp = /;\s*wv\)|KAKAOTALK|NAVER\(|DaumApps|Instagram|FBAN|FBAV|Line\/|Snapchat|Twitter/i.test(UA);
+  const BLOCKED = '앱 내 브라우저에서는 소리가 막힐 수 있어요. 오른쪽 위 메뉴(⋮)에서 크롬/삼성 인터넷으로 열기를 눌러 주세요.';
 
   function refresh() {
     if (!supported) return;
@@ -101,7 +105,14 @@ const TTS = (() => {
     try { synth.addEventListener('voiceschanged', refresh); } catch (e) { synth.onvoiceschanged = refresh; }
     if (!ready) {
       let n = 0;
-      timer = setInterval(() => { refresh(); if (ready || ++n >= 12) { clearInterval(timer); timer = null; } }, 350);
+      timer = setInterval(() => {
+        refresh();
+        if (ready || ++n >= 12) {
+          clearInterval(timer); timer = null;
+          /* 안드로이드 WebView처럼 끝내 목록을 주지 않는 기기: 기다림을 끝내고 기본 엔진으로 시도하게 한다 */
+          if (!ready) { ready = true; waiting.splice(0).forEach(cb => { try { cb(); } catch (e) { } }); }
+        }
+      }, 350);
     }
   }
 
@@ -172,47 +183,61 @@ const TTS = (() => {
     const p = pick(code);
     return p ? p.voice : null;
   }
-  function stop() {
+  /* 재생 중이던 것만 끊는다(새 발화를 준비할 때) */
+  function release() {
     if (curEl) curEl.classList.remove('playing');
     curEl = null; curUtt = null;
     if (!supported) return;
     try { synth.cancel(); } catch (e) { }
   }
+  function stop() { release(); }
   function say(text, code, el, name) {
     const t = String(text == null ? '' : text).replace(/\s+/g, ' ').trim();
     if (!t) return false;
-    if (!supported) {
-      toast('이 브라우저에서는 음성 읽기를 쓸 수 없어요. 크롬이나 삼성 인터넷에서 열어 주세요.', 4200);
-      return false;
-    }
+    if (!supported) { toast(BLOCKED, 6500); return false; }
     if (curEl && curEl === el) { stop(); return true; }   /* 듣던 버튼을 다시 누르면 정지 */
-    stop();
-    const v = find(code);
-    if (!v) {
-      const nm = name || CODE_KO[code] || code;
-      toast(`🔇 ${nm}(${code}) 음성이 이 기기에 없어요. 설정 › 언어 및 입력 › 텍스트 읽어주기에서 음성 데이터를 받아 주세요.`, 4800);
-      return false;
-    }
+    const lang = code || 'en-GB';
+    /* 목록이 비어 있거나 이 언어 음성이 없어도 포기하지 않는다:
+       voice 없이 u.lang 만 지정해도 기기 기본 TTS 엔진이 읽어 주는 경우가 많다(안드로이드). */
+    const p = pick(lang);
+    const v = p ? p.voice : null;
+    const busy = !!(curUtt || synth.speaking || synth.pending);
+    if (busy) release();   /* cancel() 직후 같은 tick의 speak()는 삼성 인터넷·크롬에서 무시되므로 이때만 잠깐 미룬다 */
     const u = new SpeechSynthesisUtterance(t);
-    u.voice = v;
-    u.lang = v.lang || code;
+    if (v) { u.voice = v; u.lang = v.lang || lang; } else { u.lang = lang; }
     u.rate = Math.min(3, Math.max(0.3, Number(SET.rate) || 1));
     u.pitch = 1;
     curEl = el || null; curUtt = u;
     if (el) el.classList.add('playing');
+    let started = false;
     const done = () => { if (el) el.classList.remove('playing'); if (curUtt === u) { curUtt = null; curEl = null; } };
+    u.onstart = () => { started = true; };
     u.onend = done;
-    u.onerror = done;
-    /* 크롬 안드로이드에서는 cancel() 직후 같은 tick에 speak()하면 무시되는 경우가 있다 */
-    setTimeout(() => {
+    u.onerror = ev => {
+      const err = ev && ev.error;
+      done();
+      if (err === 'interrupted' || err === 'canceled') return;   /* 우리가 끊은 것 */
+      toast(BLOCKED, 6500);
+    };
+    const fire = () => {
       if (curUtt !== u) return;
       try { synth.resume(); } catch (e) { }
-      try { synth.speak(u); } catch (e) { done(); toast('음성을 재생하지 못했어요.'); }
-    }, 40);
+      try { synth.speak(u); } catch (e) { done(); toast(BLOCKED, 6500); return; }
+      /* 예외 없이 조용히 무시하는 기기(안드로이드 WebView) — 시작 신호가 없으면 한 번만 안내 */
+      setTimeout(() => {
+        if (started || curUtt !== u) return;
+        if (synth.speaking || synth.pending) return;
+        if (warned) return;
+        warned = true;
+        toast('소리가 시작되지 않았어요. ' + BLOCKED, 7000);
+      }, 1600);
+    };
+    /* 사용자 탭 제스처가 살아 있는 지금(클릭 핸들러 안) 바로 speak() — setTimeout 안에서 부르면 안드로이드가 무시한다 */
+    if (busy) setTimeout(fire, 40); else fire();
     return true;
   }
   return {
-    supported, say, stop, find, pick,
+    supported, say, stop, find, pick, inApp, blockedMsg: BLOCKED,
     list: () => voices.slice(),
     count: () => voices.length,
     has: code => !!find(code),
@@ -326,8 +351,11 @@ function fillVoiceLine(box, code, sample) {
     if (p) {
       stat.textContent = `${name} 음성: ${p.voice.name} [${p.voice.lang}]`;
       stat.className = 'vstat ok';
+    } else if (!TTS.count()) {
+      stat.textContent = `음성 목록을 못 읽었어요 — 그래도 🔊 를 누르면 기기 기본 음성으로 재생을 시도해요`;
+      stat.className = 'vstat';
     } else {
-      stat.textContent = `기기에 ${name} 음성 없음 — 설정에서 음성 데이터를 받으면 들려요`;
+      stat.textContent = `기기에 ${name} 음성 없음 — 🔊 를 누르면 기본 음성으로 시도하고, 안 되면 설정에서 음성 데이터를 받아 주세요`;
       stat.className = 'vstat no';
     }
   });
@@ -374,8 +402,24 @@ function voiceLabel(code) {
   if (!TTS.supported) return '이 브라우저는 음성 읽기 미지원';
   if (!TTS.ready) return '목소리 불러오는 중…';
   const p = TTS.pick(code);
-  if (!p) return '음성 없음';
+  if (!p) return TTS.count() ? '음성 없음' : '기기 기본 음성으로 재생';
   return `🔊 ${p.voice.name} [${p.voice.lang}]`;
+}
+
+/* 앱 안 브라우저(WebView)로 열었을 때 — 소리가 막히는 경우가 많아 배너로 알려 준다 */
+function soundHelpBanner(force) {
+  if (typeof document === 'undefined' || document.getElementById('sndBanner')) return;
+  if (!force && !TTS.inApp) return;
+  if (store.get('sndBannerOff', false)) return;
+  const main = document.querySelector('main');
+  if (!main) return;
+  const b = document.createElement('div');
+  b.id = 'sndBanner';
+  b.className = 'sndbanner';
+  b.innerHTML = `<span class="sndmsg">🔇 앱 내 브라우저에서는 소리가 막힐 수 있어요. 오른쪽 위 메뉴(⋮)에서 <b>크롬/삼성 인터넷으로 열기</b>를 눌러 주세요.</span>
+    <button type="button" class="sndclose" aria-label="안내 닫기" title="안내 닫기">✕</button>`;
+  main.parentNode.insertBefore(b, main);
+  b.querySelector('.sndclose').onclick = () => { store.set('sndBannerOff', true); b.remove(); };
 }
 
 function showVoiceDiag(code) {
@@ -1166,6 +1210,55 @@ async function renderStudyView(sIdx, s) {
   window.scrollTo(0, 0);
 }
 
+/* ---- 동사 변화: 1~3권 전체를 한 번에 검색 ---- */
+const VSEARCH = {};
+/* 대소문자·발음 기호(악센트)·따움표 차이를 눌러 준다 — 'ire' 로도 'iré' 를 찾게 */
+function foldText(s) {
+  return String(s == null ? '' : s).toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\u2019\u2018`]/g, "'").replace(/\s+/g, ' ').trim();
+}
+function verbSearchRows(langNo) {
+  if (!VSEARCH[langNo]) {
+    VSEARCH[langNo] = (async () => {
+      const meta = await DATA.verbMeta();
+      const out = [];
+      for (const v of meta.vols) {
+        const [items, nat] = await Promise.all([DATA.verbItems(v.vol), DATA.verbLang(v.vol, langNo)]);
+        items.forEach((r, i) => {
+          const n = nat[i] || [];
+          out.push({ vol: v.vol, verbEn: r[1], verbKo: r[2], tense: r[3], person: r[4], en: r[5], ko: r[6], native: n[0] || '', pron: n[1] || '' });
+        });
+      }
+      return out;
+    })().catch(e => { delete VSEARCH[langNo]; throw e; });
+  }
+  return VSEARCH[langNo];
+}
+/* 한 행이 검색어(공백으로 나눈 모든 낱말)를 모두 품고 있는지 — 원형·한국어 뜻·활용형·발음·문장
+   라틴 문자는 낱말 단위로 맞춘다('go' 가 'got' 에 걸리지 않게). 한글·한자·키릴은 그대로 포함 검색. */
+const LATIN_SEP = /[^a-z\u00c0-\u024f\u00f8\u0111\u0142']+/;
+const LATIN_ANY = /[a-z\u00c0-\u024f\u00f8\u0111\u0142]/;
+function wordHit(hay, w) {
+  if (!LATIN_ANY.test(w)) return hay.indexOf(w) >= 0;
+  return hay.split(LATIN_SEP).indexOf(w) >= 0;
+}
+function verbMatches(r, words, loose) {
+  const hay = foldText([r.verbEn, r.verbKo, r.native, r.pron, r.en, r.ko, r.tense, r.person].join(' · '));
+  return words.every(w => loose ? hay.indexOf(w) >= 0 : wordHit(hay, w));
+}
+/* 같은 권·같은 동사의 활용을 한 카드로 묶는다 */
+function verbGroupHits(hits) {
+  const groups = [], at = new Map();
+  hits.forEach(r => {
+    const k = r.vol + '|' + r.verbEn;
+    let g = at.get(k);
+    if (!g) { g = { vol: r.vol, verbEn: r.verbEn, verbKo: r.verbKo, rows: [] }; at.set(k, g); groups.push(g); }
+    g.rows.push(r);
+  });
+  return groups;
+}
+
 async function renderGrammarSetup() {
   loading();
   let sIdx, gIdx, vmeta;
@@ -1226,6 +1319,17 @@ async function renderGrammarSetup() {
         </div>
       </div>
       <div class="field">
+        <label>동사 검색 · 1~3권 전체</label>
+        <div class="findrow">
+          <input id="vFind" type="search" class="find" autocomplete="off" enterkeyhint="search"
+            placeholder="to go, 가다, 갔다, ich bin, 이히 빈" value="${esc(s.vq || '')}">
+          <button type="button" id="vFindClear" class="btn plain sm" aria-label="검색어 지우기" title="검색어 지우기" ${s.vq ? '' : 'hidden'}>✕</button>
+        </div>
+        <div id="vCount" class="findcount"></div>
+      </div>
+      <div id="vHits"></div>
+      <div id="vQuizSetup">
+      <div class="field">
         <label>시제</label>
         <div class="chips" id="vTense">
           <button class="chip ${s.tense === -1 ? 'on' : ''}" data-t="-1">전체</button>
@@ -1237,7 +1341,8 @@ async function renderGrammarSetup() {
         <div class="chips" id="vN">${[10, 20, 30].map(n => `<button class="chip ${s.vn === n ? 'on' : ''}" data-n="${n}">${n}문제</button>`).join('')}</div>
       </div>
       <button class="btn" id="vStart">동사 변화 풀기 <span class="n">${verbTotal}항목</span></button>
-      <p class="subnote">같은 동사·같은 시제에서 인칭만 바꾼 진짜 활용형이 보기로 나옵니다.</p>
+      <p class="subnote">같은 동사·같은 시제에서 인칭만 바꾼 진짜 활용형이 보기로 나옵니다. 원하는 동사는 위 검색창에서 바로 찾아 들을 수 있어요.</p>
+      </div>
       ` : `
       <div class="field" style="margin-top:14px">
         <label>언어</label>
@@ -1272,7 +1377,11 @@ async function renderGrammarSetup() {
     $$('#vTense .chip').forEach(c => c.onclick = () => { s.tense = Number(c.dataset.t); $$('#vTense .chip').forEach(x => x.classList.toggle('on', x === c)); });
     $$('#vN .chip').forEach(c => c.onclick = () => { s.vn = Number(c.dataset.n); $$('#vN .chip').forEach(x => x.classList.toggle('on', x === c)); });
     $('#vVol').onchange = e => { s.vol = Number(e.target.value); };
-    $('#vLang').onchange = e => { s.lang = Number(e.target.value); };
+    $('#vLang').onchange = e => {
+      s.lang = Number(e.target.value);
+      const f = $('#vFind');
+      if (f && f.value.trim()) f.dispatchEvent(new Event('input'));
+    };
   }
 
   const runGame = async () => {
@@ -1339,10 +1448,14 @@ async function renderGrammarSetup() {
     }
   };
 
-  const runVerb = async () => {
-    const [metaV, rows, lang] = await Promise.all([DATA.verbMeta(), DATA.verbItems(s.vol), DATA.verbLang(s.vol, s.lang)]);
+  const runVerb = async (opt) => {
+    const vol = (opt && opt.vol) || s.vol;
+    const only = (opt && opt.only) || '';
+    const tenseSel = (opt && opt.allTenses) ? -1 : s.tense;
+    const [metaV, rows, lang] = await Promise.all([DATA.verbMeta(), DATA.verbItems(vol), DATA.verbLang(vol, s.lang)]);
     const lname = (metaV.langs.find(l => l.no === s.lang) || {}).ko || '';
-    const pool = rows.map((r, i) => i).filter(i => (s.tense < 0 || rows[i][3] === metaV.tenses[s.tense]) && lang[i] && lang[i][0]);
+    const pool = rows.map((r, i) => i).filter(i => (tenseSel < 0 || rows[i][3] === metaV.tenses[tenseSel]) && lang[i] && lang[i][0] && (!only || rows[i][1] === only));
+    if (!pool.length) { alert('이 조건에 맞는 활용이 없어요. 시제나 검색어를 바꿔 보세요.'); return; }
     const picked = sample(pool, s.vn);
     const takeUnique = (cands, used) => {
       const seen = new Set(used);
@@ -1375,7 +1488,7 @@ async function renderGrammarSetup() {
       const optsRaw = shuffle([i].concat(d));
       return {
         kind: 'mc',
-        title: `${s.vol}권 · ${lname}`,
+        title: `${vol}권 · ${lname}`,
         prompt: `<div class="qtext"><span class="big">${esc(showEn ? en : ko)}</span></div>`,
         sub: `<b>${esc(verbEn)}</b> ${esc(verbKo)} · ${esc(tense)} · ${esc(person)} — ${esc(lname)}로?`,
         sayPrompt: showEn ? { t: en, c: 'en-GB', n: '영어' } : null,
@@ -1383,12 +1496,96 @@ async function renderGrammarSetup() {
         correct: optsRaw.indexOf(i),
         sayAnswer: { t: correct, c: vcode, n: lname },
         why: '',
-        key: `v${s.vol}:${s.lang}:${i}`
+        key: `v${vol}:${s.lang}:${i}`
       };
     });
     lastBuilder = runVerb;
-    startQuiz({ title: `동사 변화 · ${lname}`, mode: 'verb', items });
+    startQuiz({ title: only ? `동사 변화 · ${only} · ${lname}` : `동사 변화 · ${lname}`, mode: 'verb', items });
   };
+
+  /* ---- 동사 검색: 1~3권 전체에서 동사·뜻·활용형을 찾고 바로 듣기 ---- */
+  if (isVerb) {
+    const vFind = $('#vFind'), vCount = $('#vCount'), vHits = $('#vHits'), vClear = $('#vFindClear'), vSetup = $('#vQuizSetup');
+    let token = 0;
+    const vSays = [];
+    const vcode = LANG_CODE[s.lang] || 'en-GB';
+    const lname = (vmeta.langs.find(l => l.no === s.lang) || {}).ko || '';
+    const GROUP_MAX = 12;
+    const run = async () => {
+      const q = vFind.value.trim();
+      s.vq = q;
+      if (vClear) vClear.hidden = !q;
+      if (!q) {
+        vCount.textContent = ''; vCount.classList.remove('on');
+        vHits.innerHTML = ''; vSays.length = 0;
+        if (vSetup) vSetup.hidden = false;
+        return;
+      }
+      const my = ++token;
+      if (vSetup) vSetup.hidden = true;
+      vCount.classList.remove('on');
+      vCount.textContent = '찾는 중…';
+      let all;
+      try { all = await verbSearchRows(s.lang); }
+      catch (e) { if (my === token) vCount.textContent = '동사 데이터를 불러오지 못했어요: ' + e.message; return; }
+      if (my !== token || !vFind.isConnected) return;
+      const words = foldText(q).split(' ').filter(Boolean);
+      let hits = all.filter(r => verbMatches(r, words, false));
+      let loose = false;
+      if (!hits.length) { hits = all.filter(r => verbMatches(r, words, true)); loose = hits.length > 0; }
+      const groups = verbGroupHits(hits);
+      const shown = groups.slice(0, GROUP_MAX);
+      vSays.length = 0;
+      const cards = shown.map((g, gi) => {
+        const tenses = vmeta.tenses.concat(g.rows.map(r => r.tense).filter((t, i, a) => vmeta.tenses.indexOf(t) < 0 && a.indexOf(t) === i));
+        const rowsHtml = tenses.map(t => {
+          const rs = g.rows.filter(r => r.tense === t);
+          if (!rs.length) return '';
+          return `<div class="vtense"><div class="vtense-h">${esc(t)}</div>
+            ${rs.map(r => {
+              const n = vSays.length;
+              vSays.push({ t: r.native, c: vcode, n: lname });
+              return `<div class="vline">
+                <span class="vperson">${esc(r.person)}</span>
+                <b class="vnative">${esc(r.native)}</b>
+                ${r.pron ? `<span class="vpron">${esc(pronText(r.pron))}</span>` : ''}
+                ${spkBtn('s' + n)}
+                <span class="vsent">${esc(r.en)} · ${esc(r.ko)}</span>
+              </div>`;
+            }).join('')}
+          </div>`;
+        }).join('');
+        return `<div class="vcard2">
+          <div class="vcard2-h">
+            <div>
+              <div class="vcard2-t">${esc(g.verbEn)} <span class="vcard2-ko">${esc(g.verbKo)}</span></div>
+              <div class="vcard2-m">${g.vol}권 · ${g.rows.length}개 활용 · ${esc(lname)}</div>
+            </div>
+            <button type="button" class="btn sm plain" data-vquiz="${gi}">이 동사 풀기</button>
+          </div>
+          ${rowsHtml}
+        </div>`;
+      }).join('');
+      vCount.classList.add('on');
+      vCount.innerHTML = hits.length
+        ? `🔍 <b>${esc(q)}</b> · ${groups.length}개 동사 · ${hits.length}개 활용${loose ? ' · 비슷한 낱말' : ''}`
+        : `🔍 <b>${esc(q)}</b> · 맞는 동사가 없어요`;
+      vHits.innerHTML = hits.length
+        ? `<div class="vhitscard">${cards}${groups.length > GROUP_MAX ? `<p class="subnote">앞의 ${GROUP_MAX}개 동사만 보여 줍니다(전체 ${groups.length}개). 검색어를 더 넣어 좁히세요.</p>` : ''}</div>`
+        : `<p class="desc">맞는 활용이 없어요. 동사 원형·한국어 뜻·활용형·발음으로 찾아보세요 — 예: to go, 가다, 갔다, ich bin, 이히 빈</p>`;
+      bindSayList(vSays);
+      $$('[data-vquiz]', vHits).forEach(b => b.onclick = () => {
+        const g = shown[Number(b.dataset.vquiz)];
+        if (!g) return;
+        s.vol = g.vol;
+        runVerb({ vol: g.vol, only: g.verbEn, allTenses: true });
+      });
+    };
+    vFind.oninput = run;
+    vFind.onkeydown = e => { if (e.key === 'Escape') { vFind.value = ''; run(); } };
+    if (vClear) vClear.onclick = () => { vFind.value = ''; run(); vFind.focus(); };
+    if (s.vq) run();
+  }
 
   const gs = $('#gStart2'); if (gs) gs.onclick = runGame;
   const vs = $('#vStart'); if (vs) vs.onclick = runVerb;
@@ -1830,4 +2027,5 @@ async function renderLibrary() {
 
 /* ================================================================== 시작 */
 refreshWrongBadge();
+soundHelpBanner();
 go('grammar');
