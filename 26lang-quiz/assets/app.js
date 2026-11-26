@@ -605,6 +605,50 @@ function pickUnique(pool, n, excludeIdx, keyOf, correctKey) {
   }
   return out;
 }
+
+/* ------------------------------------------------------------------ 난이도
+   문장 순서(order)·어순 고르기(pick)를 초급(1)·중급(2)·고급(3)으로 나눈다.
+   단어 수에 구조 복잡도를 더한다 — 접속절이 있거나 동사가 둘 이상이면 +2,
+   의문사가 앞에 오면 +1, 전치사구가 둘 이상이면 +1. 4 이하 초급, 6 이하 중급, 그 위 고급. */
+const LV_NAME = { 1: '초급', 2: '중급', 3: '고급' };
+function diffLevel(roles, n) {
+  const r = (roles || []).map(x => String(x == null ? '' : x).trim());
+  const has = p => r.some(x => x.indexOf(p) === 0);
+  const verbs = r.filter(x => x.indexOf('동사') === 0).length;
+  const preps = r.filter(x => x.indexOf('전치사') === 0).length;
+  let s = n || 0;
+  if (has('접속사') || verbs >= 2) s += 2;
+  else if (has('의문사')) s += 1;
+  if (preps >= 2) s += 1;
+  return s <= 4 ? 1 : (s <= 6 ? 2 : 3);
+}
+function diffOfOrder(o) { return diffLevel(o && o.r, o && o.t ? o.t.length : 0); }
+/* 어순 고르기 문항은 정답 문장이 같은 문장 순서 문항의 역할 정보를 빌려 쓴다. */
+function pickIndexOf(data) {
+  const byAnswer = {};
+  ((data && data.order) || []).forEach(o => { if (o && o.a && !byAnswer[o.a]) byAnswer[o.a] = o; });
+  return byAnswer;
+}
+function diffOfPick(c, byAnswer) {
+  const o = (byAnswer && c) ? byAnswer[c.a] : null;
+  if (o) return diffOfOrder(o);
+  return diffLevel([], String((c && c.a) || '').split(/\s+/).filter(Boolean).length);
+}
+/* 그 언어·게임의 난이도별 문항 수 [초급, 중급, 고급] */
+function diffCounts(data, game) {
+  const out = [0, 0, 0];
+  if (!data) return out;
+  if (game === 'order') (data.order || []).forEach(o => { out[diffOfOrder(o) - 1] += 1; });
+  else {
+    const byAnswer = pickIndexOf(data);
+    (data.pick || []).forEach(c => { out[diffOfPick(c, byAnswer) - 1] += 1; });
+  }
+  return out;
+}
+/* 난이도를 고르면 그 난이도 문항만 남긴다(0 = 전체). */
+function diffPick(pool, lv, fn) {
+  return lv ? pool.filter(x => fn(x) === lv) : pool;
+}
 function fmtSize(b) {
   return b >= 1048576 ? (b / 1048576).toFixed(1) + 'MB' : Math.round(b / 1024) + 'KB';
 }
@@ -897,6 +941,7 @@ function renderQuiz() {
   app.innerHTML = `<div class="screen">
     <div class="qhead">
       <span class="badge">${esc(q.title)}</span>
+      ${it.lv ? `<span class="lvb lv${it.lv}">${LV_NAME[it.lv]}</span>` : ''}
       <span class="pct mono">${q.idx + 1} / ${q.items.length} · 정답 ${q.answers.filter(Boolean).length}</span>
     </div>
     <div class="progress"><i style="width:${pct}%"></i></div>
@@ -973,7 +1018,7 @@ function payloadOf(it) {
       sayF: (it.front && it.front.say) || null, sayB: (it.back && it.back.say) || null };
   }
   if (it.kind === 'order') {
-    return { key: it.key, kind: 'order', title: it.title || '', prompt: it.prompt, sub: it.sub || '',
+    return { key: it.key, kind: 'order', title: it.title || '', lv: it.lv || 0, prompt: it.prompt, sub: it.sub || '',
       answer: it.answer, tiles: it.tiles || [], roles: it.roles || [], meanings: it.meanings || [],
       orderHint: it.orderHint || '', rolesAns: it.rolesAns || [], meaningsAns: it.meaningsAns || [],
       tip: it.tip || '', gl: it.gl || 0,
@@ -983,7 +1028,7 @@ function payloadOf(it) {
   return {
     key: it.key || (it.prompt + '|' + (it.answer || '')).slice(0, 120),
     kind: it.kind, prompt: it.prompt, sub: it.sub || '', opts: it.opts || [],
-    hint: it.hint || null,
+    hint: it.hint || null, lv: it.lv || 0,
     correct: it.correct == null ? -1 : it.correct, answer: it.answer || '',
     why: it.why || '', extra: it.extra || '', title: it.title || '',
     sayP: it.sayPrompt || null, sayA: it.sayAnswer || null, sayX: it.sayExtra || null
@@ -995,14 +1040,14 @@ function itemFromPayload(p) {
       front: { html: p.prompt, note: '', say: p.sayF || null }, back: { html: p.answer, say: p.sayB || null } };
   }
   if (p.kind === 'order') {
-    return { kind: 'order', title: p.title, key: p.key, prompt: p.prompt, sub: p.sub,
+    return { kind: 'order', title: p.title, key: p.key, lv: p.lv || 0, prompt: p.prompt, sub: p.sub,
       answer: p.answer, tiles: p.tiles || [], roles: p.roles || [], meanings: p.meanings || [],
       orderHint: p.orderHint || '', rolesAns: p.rolesAns || [], meaningsAns: p.meaningsAns || [],
       tip: p.tip || '', gl: p.gl || 0,
       pron: p.pron || '', why: p.why || '', say: p.sayA || null };
   }
   return { kind: p.kind === 'self' ? 'self' : 'mc', prompt: p.prompt, sub: p.sub, opts: p.opts,
-    hint: p.hint || null,
+    hint: p.hint || null, lv: p.lv || 0,
     correct: p.correct, answer: p.answer, why: p.why, extra: p.extra, key: p.key, title: p.title,
     sayPrompt: p.sayP || null, sayAnswer: p.sayA || null, sayExtra: p.sayX || null };
 }
@@ -1129,6 +1174,7 @@ function renderOrder() {
   app.innerHTML = `<div class="screen">
     <div class="qhead">
       <span class="badge">${esc(q.title)}</span>
+      ${it.lv ? `<span class="lvb lv${it.lv}">${LV_NAME[it.lv]}</span>` : ''}
       <span class="pct mono">${q.idx + 1} / ${q.items.length} · 정답 ${q.answers.filter(Boolean).length}</span>
     </div>
     <div class="progress"><i style="width:${pct}%"></i></div>
@@ -1532,6 +1578,18 @@ async function renderGrammarSetup() {
   const avail = isVerb ? [] : listFor(s.game);
   if (!isVerb && !avail.some(l => l.no === s.glang)) s.glang = avail.length ? avail[0].no : 6;
   const verbTotal = vmeta.vols.reduce((a, b) => a + b.count, 0);
+  /* 문장 순서·어순 고르기는 난이도(초급/중급/고급)로 나눠 고를 수 있다. */
+  const useDiff = !isVerb && (s.game === 'order' || s.game === 'pick');
+  if (!useDiff || s.gdiff == null) s.gdiff = 0;
+  let dcounts = null;
+  if (useDiff) {
+    try { dcounts = diffCounts(await DATA.games(s.glang), s.game); } catch (e) { dcounts = null; }
+    if (dcounts && s.gdiff && !dcounts[s.gdiff - 1]) s.gdiff = 0;
+  }
+  const diffTotal = () => dcounts ? dcounts[0] + dcounts[1] + dcounts[2] : 0;
+  const diffSel = () => dcounts ? (s.gdiff ? dcounts[s.gdiff - 1] : diffTotal()) : 0;
+  const startLabel = () => `${GAME_NAME[s.game]} 시작` +
+    (dcounts ? ` <span class="n">${diffSel()}문항</span>` : '');
 
   app.innerHTML = `<div class="screen">
     <div class="segbar">
@@ -1590,7 +1648,15 @@ async function renderGrammarSetup() {
         <label>문제 수</label>
         <div class="chips" id="gN">${[10, 20, 30, 50].map(n => `<button class="chip ${s.gn === n ? 'on' : ''}" data-n="${n}">${n}</button>`).join('')}</div>
       </div>
-      <button class="btn" id="gStart2">${GAME_NAME[s.game]} 시작</button>
+      ${useDiff ? `<div class="field">
+        <label>난이도</label>
+        <div class="chips" id="gDiff">
+          <button class="chip ${s.gdiff ? '' : 'on'}" data-lv="0">전체${dcounts ? `<span class="n">${diffTotal()}</span>` : ''}</button>
+          ${[1, 2, 3].map(lv => `<button class="chip ${s.gdiff === lv ? 'on' : ''}" data-lv="${lv}"${dcounts && !dcounts[lv - 1] ? ' disabled' : ''}>${LV_NAME[lv]}${dcounts ? `<span class="n">${dcounts[lv - 1]}</span>` : ''}</button>`).join('')}
+        </div>
+        <p class="subnote" id="gDiffNote">단어 수와 문장 구조(접속절·동사 개수·전치사구)로 나눴어요. 초급은 짧고 기본인 문장, 고급은 길거나 절이 둘 이상인 문장입니다.</p>
+      </div>` : ''}
+      <button class="btn" id="gStart2">${startLabel()}</button>
       <div id="gVoice" class="voiceline"></div>
       <p class="subnote">${s.game === 'order' ? '한국어 뜻을 보고 섞인 단어를 순서대로 눌러 문장을 만드세요.'
         : s.game === 'cloze' ? '문장의 빈칸에 알맞은 말을 고르세요. 가이드 예문과 내가 보낸 문장에서 냅니다.'
@@ -1610,6 +1676,13 @@ async function renderGrammarSetup() {
   if (!isVerb) {
     $('#gLang2').onchange = e => { s.glang = Number(e.target.value); renderGrammarSetup(); };
     $$('#gN .chip').forEach(c => c.onclick = () => { s.gn = Number(c.dataset.n); $$('#gN .chip').forEach(x => x.classList.toggle('on', x === c)); });
+    $$('#gDiff .chip').forEach(c => c.onclick = () => {
+      if (c.disabled) return;
+      s.gdiff = Number(c.dataset.lv);
+      $$('#gDiff .chip').forEach(x => x.classList.toggle('on', x === c));
+      const btn = $('#gStart2');
+      if (btn) btn.innerHTML = startLabel();
+    });
   }
   if (isVerb) {
     $$('#vTense .chip').forEach(c => c.onclick = () => { s.tense = Number(c.dataset.t); $$('#vTense .chip').forEach(x => x.classList.toggle('on', x === c)); });
@@ -1630,9 +1703,10 @@ async function renderGrammarSetup() {
       const lname = langName(s.glang);
       const code = LANG_CODE[s.glang] || '';
       const sayOf = t => ({ t: t, c: code, n: lname });
+      const lvTag = s.gdiff ? ' · ' + LV_NAME[s.gdiff] : '';
       let items = [];
       if (s.game === 'order') {
-        items = sample(data.order, s.gn).map(o => {
+        items = sample(diffPick(data.order || [], s.gdiff, diffOfOrder), s.gn).map(o => {
           let order = shuffle(o.t.map((_, i) => i));
           let guard = 0;
           while (order.map(i => o.t[i]).join(' ') === o.a && guard++ < 6) order = shuffle(order);
@@ -1640,7 +1714,7 @@ async function renderGrammarSetup() {
           const roles = order.map(i => (o.r && o.r[i]) || '');
           const meanings = order.map(i => (o.m && o.m[i]) || '');
           return {
-            kind: 'order', title: `${lname} · 문장 순서`,
+            kind: 'order', title: `${lname} · 문장 순서${lvTag}`, lv: diffOfOrder(o),
             prompt: `<div class="qtext">${esc(o.ko)}</div>`,
             sub: `<span style="color:var(--ink3)">단어를 순서대로 눌러 ${esc(lname)} 문장을 만드세요.</span>`,
             answer: o.a, tiles: tiles, roles: roles, meanings: meanings, orderHint: orderHintOf(s.glang),
@@ -1666,12 +1740,11 @@ async function renderGrammarSetup() {
           };
         });
       } else if (s.game === 'pick') {
-        const byAnswer = {};
-        (data.order || []).forEach(o => { if (o && o.a && !byAnswer[o.a]) byAnswer[o.a] = o; });
-        items = sample(data.pick, s.gn).map(c => {
+        const byAnswer = pickIndexOf(data);
+        items = sample(diffPick(data.pick || [], s.gdiff, c => diffOfPick(c, byAnswer)), s.gn).map(c => {
           const o = byAnswer[c.a] || null;
           return {
-            kind: 'mc', title: `${lname} · 어순`,
+            kind: 'mc', title: `${lname} · 어순${lvTag}`, lv: diffOfPick(c, byAnswer),
             prompt: `<div class="qtext">어순이 맞는 문장을 고르세요</div>`,
             sub: `<b>뜻</b> ${esc(c.ko)}`,
             hint: pickHint(s.glang, o, lname),
@@ -1683,13 +1756,17 @@ async function renderGrammarSetup() {
           };
         });
       }
-      if (!items.length) { alert('이 언어에는 아직 문제가 없어요. 다른 언어를 골라 주세요.'); return; }
+      if (!items.length) {
+        alert(s.gdiff ? `이 언어는 ${LV_NAME[s.gdiff]} 문제가 아직 없어요. 다른 난이도나 언어를 골라 주세요.`
+          : '이 언어에는 아직 문제가 없어요. 다른 언어를 골라 주세요.');
+        return;
+      }
       lastBuilder = runGame;
-      startQuiz({ title: `${GAME_NAME[s.game]} · ${lname}`, mode: 'gram', items });
+      startQuiz({ title: `${GAME_NAME[s.game]} · ${lname}${lvTag}`, mode: 'gram', items });
     } catch (e) {
       alert('문제를 만드는 중 오류: ' + e.message);
     } finally {
-      if (btn) { btn.disabled = false; btn.textContent = `${GAME_NAME[s.game]} 시작`; }
+      if (btn) { btn.disabled = false; btn.innerHTML = startLabel(); }
     }
   };
 

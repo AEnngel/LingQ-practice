@@ -106,6 +106,7 @@ main { padding: 16px 16px 24px; max-width: 720px; margin: 0 auto; }
 }
 .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .chip .n { font-weight: 500; opacity: .7; font-size: 11.5px; margin-left: 4px; }
+.chip[disabled] { opacity: .38; }
 
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
 .grow { flex: 1 1 auto; }
@@ -140,6 +141,11 @@ select { background-image: linear-gradient(45deg, transparent 50%, var(--ink3) 5
 /* ---------------------------------------------------------------- quiz */
 .qhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .qhead .badge { font-size: 11.5px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 4px 9px; border-radius: 999px; }
+.qhead .lvb { display: inline-flex; align-items: center; gap: 4px; flex: none; font-size: 11px; font-weight: 800; color: var(--ink2); background: var(--card); border: 1px solid var(--line); padding: 3px 8px; border-radius: 999px; }
+.qhead .lvb::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ink3); }
+.qhead .lvb.lv1::before { background: var(--green); }
+.qhead .lvb.lv2::before { background: var(--accent); }
+.qhead .lvb.lv3::before { background: var(--gold); }
 .qhead .pct { margin-left: auto; font-size: 12.5px; color: var(--ink3); font-variant-numeric: tabular-nums; }
 .progress { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; margin-bottom: 16px; }
 .progress > i { display: block; height: 100%; background: var(--accent); border-radius: 999px; transition: width .2s; }
