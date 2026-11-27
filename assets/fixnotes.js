@@ -336,7 +336,7 @@
     if (input) input.value = '';
     if (fbEl) fbEl.hidden = true;
     draw();
-    tip('메모 1건을 추가했어요 · 모두 ' + notes.length + '건', 2600);
+    tip('1건 추가 · 모두 ' + notes.length + '건', 2600);
     if (input) input.focus();
   }
   function toggleDone(id, done) {
@@ -350,7 +350,7 @@
     if (notes.length === before) return;
     writeStore(notes);
     draw();
-    tip('메모 1건을 지웠어요', 2200);
+    tip('1건 지웠어요', 2200);
   }
   function clearAll() {
     if (!notes.length) { tip('비울 메모가 없어요'); return; }
@@ -393,7 +393,7 @@
     if (!text) { tip('복사할 메모가 없어요'); return; }
     var ok = function () {
       if (fbEl) fbEl.hidden = true;
-      tip('메모 ' + notes.length + '건을 복사했어요 — 대화에 붙여 넣으세요', 4000);
+      tip('복사했어요 · 대화에 붙여 넣기', 4000);
     };
     var fallback = function () {
       if (!fbEl || !fbText) { tip('복사하지 못했어요. 목록의 글을 길게 눌러 복사해 주세요', 4500); return; }
