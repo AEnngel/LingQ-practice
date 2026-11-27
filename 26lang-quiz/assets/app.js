@@ -1,4 +1,4 @@
-/* 26개 언어 학습 테스트 — 문법 · 단어 · 내가 보낸 문장 · 자료실
+/* 30개 언어 학습 테스트 — 문법 · 단어 · 내가 보낸 문장 · 자료실
    데이터는 data/ 아래 JSON을 그때그때 fetch 한다. */
 'use strict';
 
@@ -26,7 +26,8 @@ const LANG_CODE = {
   1: 'ko-KR', 2: 'en-GB', 3: 'en-GB', 4: 'de-DE', 5: 'fr-FR', 6: 'es-ES', 7: 'pt-PT',
   8: 'it-IT', 9: 'la', 10: 'nl-NL', 11: 'sco', 12: 'ga-IE', 13: 'da-DK', 14: 'nb-NO',
   15: 'sv-SE', 16: 'is-IS', 17: 'fi-FI', 18: 'hu-HU', 19: 'pl-PL', 20: 'uk-UA',
-  21: 'ru-RU', 22: 'el-GR', 23: 'af-ZA', 24: 'ja-JP', 25: 'zh-CN', 26: 'zh-HK'
+  21: 'ru-RU', 22: 'el-GR', 23: 'af-ZA', 24: 'ja-JP', 25: 'zh-CN', 26: 'zh-HK',
+  27: 'gd', 28: 'sco', 29: 'sco', 30: 'cy'
 };
 const GUIDE_CODE = {
   en: 'en-GB', cockney: 'en-GB', scottish: 'en-GB', es: 'es-ES', de: 'de-DE',
@@ -38,7 +39,7 @@ const CODE_KO = {
   'ga-IE': '아일랜드어', 'da-DK': '덴마크어', 'nb-NO': '노르웨이어', 'sv-SE': '스웨덴어', 'is-IS': '아이슬란드어',
   'fi-FI': '핀란드어', 'hu-HU': '헝가리어', 'pl-PL': '폴란드어', 'uk-UA': '우크라이나어', 'ru-RU': '러시아어',
   'el-GR': '그리스어', 'af-ZA': '아프리칸스어', 'ja-JP': '일본어', 'zh-CN': '중국어', 'zh-HK': '광둥어',
-  'yue': '광둥어'
+  'yue': '광둥어', 'gd': '스코틀랜드 게일어', 'cy': '웨일스어'
 };
 /* 정확한 음성이 기기에 없을 때 차례로 시도할 코드 */
 const CODE_FALLBACK = {
@@ -56,7 +57,9 @@ const ORDER_HINT = {
   17: '주어 → 동사 → 목적어', 18: '주어 → 동사 → 목적어', 19: '주어 → 동사 → 목적어',
   20: '주어 → 동사 → 목적어', 21: '주어 → 동사 → 목적어', 22: '주어 → 동사 → 목적어',
   23: '주어 → 동사(2번째 자리) → 목적어', 24: '주어 → 목적어 → 동사',
-  25: '주어 → 동사 → 목적어', 26: '주어 → 동사 → 목적어'
+  25: '주어 → 동사 → 목적어', 26: '주어 → 동사 → 목적어',
+  27: '동사 → 주어 → 목적어', 28: '주어 → 동사 → 목적어', 29: '주어 → 동사 → 목적어',
+  30: '동사 → 주어 → 목적어'
 };
 function orderHintOf(no) { return ORDER_HINT[no] || ''; }
 /* 언어별 어순 규칙 한 줄 설명 (어순 고르기의 상세 힌트·해설) */
@@ -82,7 +85,11 @@ const ORDER_TIP = {
   20: '격어미가 역할을 정하는 자유 어순이고, 기본은 주어 → 동사 → 목적어입니다.',
   21: '격어미가 역할을 정하는 자유 어순이고, 새 정보가 문장 끝에 옵니다.',
   22: '주어 → 동사 → 목적어. 형용사는 명사 뒤에 오고 목적어 대명사는 동사 앞에 섭니다.',
-  23: '정동사는 두 번째 자리이고 기본은 주어 → 동사 → 목적어입니다.'
+  23: '정동사는 두 번째 자리이고 기본은 주어 → 동사 → 목적어입니다.',
+  27: '동사가 문장 맨 앞에 오는 VSO 어순입니다. 주어 대명사는 동사에 붙는 형태(tha mi = 나는 ~이다)로 쓰고, 형용사는 명사 뒤에 옵니다.',
+  28: '스코츠어 계열로 주어 → 동사 → 목적어. 정관사는 da, ~로는 ta, 진행형은 -in으로 끝납니다.',
+  29: '스코츠어 계열로 주어 → 동사 → 목적어. 정관사는 da, ~로는 ta, “꽤”는 gey를 씁니다.',
+  30: '동사가 문장 맨 앞에 오는 VSO 어순입니다. 형용사는 명사 뒤에 오고, 목적어가 대명사면 동사 뒤에 붙습니다.'
 };
 const ROLE_MOD = ['관사', '소유격', '지시사', '수사'];
 const ROLE_HEAD = ['명사', '목적어', '보어'];
@@ -825,7 +832,7 @@ function memoClear() {
 function memoCopyText() {
   const rows = memoAll();
   if (!rows.length) return '';
-  const out = ['✏️ 26개 언어 학습 테스트 — 수정사항 ' + rows.length + '건', '복사 ' + memoWhenFull(Date.now()), ''];
+  const out = ['✏️ 30개 언어 학습 테스트 — 수정사항 ' + rows.length + '건', '복사 ' + memoWhenFull(Date.now()), ''];
   rows.forEach((m, i) => {
     out.push((i + 1) + ') ' + (m.loc || '위치 없음'));
     if (m.snip) out.push('   화면: ' + m.snip);
@@ -964,7 +971,7 @@ function go(tab) {
   state.quiz = null;
   memoSet(TAB_NAME[tab] || '홈');
   $$('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
-  const sub = { grammar: '문법 · 단어 · 내가 보낸 문장을 26개 언어로', words: '26개 언어 단어 · 4지선다와 플래시카드', sent: '내가 보낸 문장·표현만 모아서', lib: 'PDF 자료실 · 한곳에서 열고 받기' };
+  const sub = { grammar: '문법 · 단어 · 내가 보낸 문장을 30개 언어로', words: '30개 언어 단어 · 4지선다와 플래시카드', sent: '내가 보낸 문장·표현만 모아서', lib: 'PDF 자료실 · 한곳에서 열고 받기' };
   $('#brandSub').textContent = sub[tab] || '';
   if (tab === 'grammar') renderGrammarSetup();
   if (tab === 'words') renderWordsSetup();
@@ -1810,10 +1817,10 @@ async function renderGrammarSetup() {
   if (!s.guide) s.guide = 'en';
   if (s.part == null) s.part = 0;
   if (!s.game) s.game = 'order';
-  if (!s.glang) s.glang = 6;
+  if (!s.glang) s.glang = 2;
   if (!s.gn) s.gn = 10;
   if (!s.vol) s.vol = 1;
-  if (!s.lang) s.lang = 4;
+  if (!s.lang) s.lang = 2;
   if (s.tense == null) s.tense = -1;
   if (!s.vn) s.vn = 10;
 
@@ -1830,7 +1837,7 @@ async function renderGrammarSetup() {
   const listFor = kind => vocabMeta.langs.filter(l => l.no !== 1 && has(l.no, kind) > 0);
   const isVerb = s.game === 'verb';
   const avail = isVerb ? [] : listFor(s.game);
-  if (!isVerb && !avail.some(l => l.no === s.glang)) s.glang = avail.length ? avail[0].no : 6;
+  if (!isVerb && !avail.some(l => l.no === s.glang)) s.glang = avail.length ? avail[0].no : 2;
   const verbTotal = vmeta.vols.reduce((a, b) => a + b.count, 0);
   /* 문장 순서·어순 고르기는 난이도(초급/중급/고급)로 나눠 고를 수 있다. */
   const useDiff = !isVerb && (s.game === 'order' || s.game === 'pick');
@@ -2179,7 +2186,7 @@ async function renderWordsSetup() {
   try { [meta, items] = await Promise.all([DATA.vocabMeta(), DATA.vocabItems()]); }
   catch (e) { app.innerHTML = `<div class="card"><h2>데이터를 불러오지 못했어요</h2><p class="desc">${esc(e.message)}</p></div>`; return; }
   const s = state.setup.words || (state.setup.words = {
-    lang: 6, src: 'all', group: -1, batch: -1, n: 20, mode: 'mc', dir: 'ko2nat', search: ''
+    lang: 2, src: 'all', group: -1, batch: -1, n: 20, mode: 'mc', dir: 'ko2nat', search: ''
   });
   const langs = meta.langs.filter(l => l.no !== 1);
   const total = meta.counts.items;
@@ -2201,6 +2208,7 @@ async function renderWordsSetup() {
       <div class="field">
         <label>언어</label>
         <select id="wLang">${langs.map(l => `<option value="${l.no}" ${l.no === s.lang ? 'selected' : ''}>${l.no}. ${esc(l.ko)}</option>`).join('')}</select>
+        <p class="subnote" id="wLangInfo"></p>
       </div>
       <div class="field">
         <label>범위</label>
@@ -2260,12 +2268,23 @@ async function renderWordsSetup() {
   $('#wSearch').oninput = e => { s.search = e.target.value; fillGroups(); };
   groupSel.onchange = e => { s.group = Number(e.target.value); };
   $('#wBatch').onchange = e => { s.batch = Number(e.target.value); };
-  $('#wLang').onchange = e => { s.lang = Number(e.target.value); fillVoice(); };
+  $('#wLang').onchange = e => { s.lang = Number(e.target.value); fillVoice(); langInfo(); };
   const fillVoice = () => {
     const l = meta.langs.find(x => x.no === s.lang) || {};
     fillVoiceLine($('#wVoice'), LANG_CODE[s.lang], l.native || l.ko);
   };
+  /* 이 언어에 단어가 몇 개 들어 있는지 (새로 넣은 언어는 아직 적을 수 있다) */
+  const langInfo = () => {
+    const box = $('#wLangInfo');
+    if (!box) return;
+    box.textContent = '이 언어 단어 불러오는 중…';
+    DATA.vocabLang(s.lang).then(list => {
+      const n = (list || []).filter(x => x && x[0]).length;
+      box.textContent = `이 언어로 넣은 단어·표현 ${n.toLocaleString()}개`;
+    }).catch(() => { box.textContent = ''; });
+  };
   fillVoice();
+  langInfo();
   $$('#wSrc .chip').forEach(c => c.onclick = () => { s.src = c.dataset.v; $$('#wSrc .chip').forEach(x => x.classList.toggle('on', x === c)); });
   $$('#wMode .chip').forEach(c => c.onclick = () => {
     s.mode = c.dataset.v; $$('#wMode .chip').forEach(x => x.classList.toggle('on', x === c));
@@ -2369,7 +2388,7 @@ async function renderSentSetup() {
   try { [meta, items] = await Promise.all([DATA.vocabMeta(), DATA.vocabItems()]); }
   catch (e) { app.innerHTML = `<div class="card"><h2>데이터를 불러오지 못했어요</h2><p class="desc">${esc(e.message)}</p></div>`; return; }
   const s = state.setup.sent || (state.setup.sent = {
-    lang: 6, mode: 'mc', dir: 'ko2en', n: 20, search: ''
+    lang: 2, mode: 'mc', dir: 'ko2en', n: 20, search: ''
   });
   const langs = meta.langs.filter(l => l.no !== 1);
   const sentTotal = meta.counts.sentences;
@@ -2387,6 +2406,7 @@ async function renderSentSetup() {
       <div class="field">
         <label>언어 (원어 맞히기·카드에 사용)</label>
         <select id="sLang">${langs.map(l => `<option value="${l.no}" ${l.no === s.lang ? 'selected' : ''}>${l.no}. ${esc(l.ko)}</option>`).join('')}</select>
+        <p class="subnote" id="sLangInfo"></p>
       </div>
       <div class="field">
         <label>유형</label>
@@ -2443,12 +2463,22 @@ async function renderSentSetup() {
   fillGroups();
   $('#sSearch').oninput = e => { s.search = e.target.value; fillGroups(); };
   groupSel.onchange = e => { s.group = Number(e.target.value); };
-  $('#sLang').onchange = e => { s.lang = Number(e.target.value); fillVoice(); };
+  $('#sLang').onchange = e => { s.lang = Number(e.target.value); fillVoice(); langInfo(); };
   const fillVoice = () => {
     const l = meta.langs.find(x => x.no === s.lang) || {};
     fillVoiceLine($('#sVoice'), LANG_CODE[s.lang], l.native || l.ko);
   };
+  const langInfo = () => {
+    const box = $('#sLangInfo');
+    if (!box) return;
+    box.textContent = '이 언어 문장 불러오는 중…';
+    DATA.vocabLang(s.lang).then(list => {
+      const n = (list || []).filter((x, i) => x && x[0] && items[i] && items[i][4]).length;
+      box.textContent = `이 언어로 넣은 문장·표현 ${n.toLocaleString()}개`;
+    }).catch(() => { box.textContent = ''; });
+  };
   fillVoice();
+  langInfo();
   $$('#sMode .chip').forEach(c => c.onclick = () => { s.mode = c.dataset.v; $$('#sMode .chip').forEach(x => x.classList.toggle('on', x === c)); $('#sDirBox').classList.toggle('hidden', s.mode === 'card'); });
   $$('#sDir .chip').forEach(c => c.onclick = () => { s.dir = c.dataset.v; $$('#sDir .chip').forEach(x => x.classList.toggle('on', x === c)); });
   $$('#sN .chip').forEach(c => c.onclick = () => { s.n = Number(c.dataset.n); $$('#sN .chip').forEach(x => x.classList.toggle('on', x === c)); });
