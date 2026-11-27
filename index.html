@@ -1525,6 +1525,11 @@ function buildWordPool(langCode, scope, cb) {
   });
 }
 
+/* 뜻에서 괄호 설명을 벗긴 길이 — 보기를 고를 때 쓴다 */
+function meaningCore(m) {
+  return String(m || '').replace(/\s*\([^)]*\)/g, '').replace(/\s*\[[^\]]*\]/g, '').trim();
+}
+
 function wordStart(lang, pool, key) {
   if (wordState.key !== key) {
     wordState.key = key;
@@ -1560,8 +1565,15 @@ function wordStart(lang, pool, key) {
     seenM[sh[i].m] = 1;
     cands.push(sh[i].m);
   }
-  cands.sort(function (a, b) { return Math.abs(a.length - cur.m.length) - Math.abs(b.length - cur.m.length); });
-  var near = shuffle(cands.slice(0, Math.min(8, cands.length)));
+  cands.sort(function (a, b) {
+    return Math.abs(meaningCore(a).length - meaningCore(cur.m).length) - Math.abs(meaningCore(b).length - meaningCore(cur.m).length);
+  });
+  /* 결이 비슷한 보기를 먼저 — 너무 긴 설명(예: ‘일곱 시 삼십 분’)이 섞이지 않게 */
+  var tight = cands.filter(function (m) {
+    return Math.abs(meaningCore(m).length - meaningCore(cur.m).length) <= 7;
+  });
+  var pickFrom = tight.length >= 3 ? tight : cands;
+  var near = shuffle(pickFrom.slice(0, Math.min(9, pickFrom.length)));
   var distr = near.slice(0, 3);
   if (distr.length < 3) {
     document.getElementById('quiz-body').innerHTML = '<div class="empty">보기를 만들 뜻이 부족합니다. 출제 범위를 ‘전체 챕터 랜덤’으로 바꿔 보세요.</div>';
