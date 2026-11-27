@@ -377,6 +377,7 @@ select { background-image: linear-gradient(45deg, transparent 50%, var(--ink3) 5
   background: var(--accent-soft); border: 1px solid var(--line);
   border-radius: 999px; padding: 5px 10px; line-height: 1.25;
 }
+.ohint .ohlbl { flex: none; white-space: nowrap; }
 .ohint b { font-weight: 800; color: var(--accent); letter-spacing: -.01em; }
 .sndbtn {
   margin-left: auto; flex: 0 0 auto; cursor: pointer;

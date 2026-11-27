@@ -993,7 +993,7 @@ function hintBlockHtml(it, open) {
   if (!h) return '';
   return `<div class="qhint">
       <div class="qhintrow">
-        ${h.rule ? `<span class="ohint">어순 힌트 <b>${esc(h.rule)}</b></span>` : ''}
+        ${h.rule ? `<span class="ohint"><span class="ohlbl">어순 힌트</span> <b>${esc(h.rule)}</b></span>` : ''}
         <button type="button" class="qhintbtn" data-hint="1" aria-expanded="${open ? 'true' : 'false'}">${open ? '💡 상세 힌트 접기' : '💡 상세 힌트 보기'}</button>
       </div>
       <div class="qhintbox"${open ? '' : ' hidden'}>
@@ -1084,6 +1084,44 @@ function orderTipsOf(r, m, ans, glang) {
   return out.slice(0, 3);
 }
 
+/* 문장 순서: 위쪽 어순 힌트 배지에 쓸 그 문제의 대표 어순
+   — 정답 역할 순서(it.rolesAns)에서 뽑아 그 문장만의 뼈대를 보여 준다.
+   역할이 6개 이하면 그대로(주어 → 동사 → 부사), 넘으면 수식어 + 명사는 '명사구',
+   전치사 + 명사는 '전치사구'로 묶고 붙은 같은 말은 하나로 줄여 6칸 안에 맞춘다. */
+function orderBadgeHint(r) {
+  const roles = (r || []).map(x => String(x || '').trim()).filter(Boolean);
+  if (!roles.length) return '';
+  if (roles.length <= 6) return roles.join(' → ');
+  const isMod = x => ROLE_MOD.indexOf(x) >= 0 || x === '형용사';
+  const isHead = x => ROLE_HEAD.indexOf(x) >= 0 || x === '주어';
+  const out = [];
+  let i = 0;
+  while (i < roles.length) {
+    if (roles[i] === '전치사') {
+      let j = i + 1;
+      while (j < roles.length && isMod(roles[j])) j++;
+      if (j < roles.length && isHead(roles[j])) {
+        j++;
+        while (j < roles.length && isHead(roles[j])) j++;
+        out.push('전치사구'); i = j; continue;
+      }
+      out.push(roles[i]); i++; continue;
+    }
+    let j = i;
+    while (j < roles.length && isMod(roles[j])) j++;
+    if (j > i && j < roles.length && isHead(roles[j])) {
+      j++;
+      while (j < roles.length && isHead(roles[j])) j++;
+      out.push('명사구'); i = j; continue;
+    }
+    out.push(roles[i]);
+    i++;
+  }
+  const uniq = out.filter((x, k) => k === 0 || out[k - 1] !== x);
+  if (uniq.length > 6) return uniq.slice(0, 6).join(' → ') + ' …';
+  return uniq.join(' → ');
+}
+
 /* 문장 순서 상세 힌트 — 어순 힌트는 늘 보이고, 문장 뼈대·문장 팁은 접었다 편다 */
 function orderHintHtml(it, open) {
   const r = (it.rolesAns || []).map(x => String(x || '').trim());
@@ -1091,10 +1129,11 @@ function orderHintHtml(it, open) {
   const skeleton = r.filter(Boolean).join(' → ');
   const tips = orderTipsOf(r, m, it.answer, it.gl);
   const detail = !!(skeleton || it.tip || tips.length);
-  if (!it.orderHint && !detail) return '';
+  const badge = orderBadgeHint(r) || it.orderHint || '';
+  if (!badge && !detail) return '';
   return `<div class="qhint">
       <div class="qhintrow">
-        ${it.orderHint ? `<span class="ohint">어순 힌트 <b>${esc(it.orderHint)}</b></span>` : ''}
+        ${badge ? `<span class="ohint"><span class="ohlbl">어순 힌트</span> <b>${esc(badge)}</b></span>` : ''}
         ${detail ? `<button type="button" class="qhintbtn" data-ohint="1" aria-expanded="${open ? 'true' : 'false'}">${open ? '💡 상세 힌트 접기' : '💡 상세 힌트 보기'}</button>` : ''}
       </div>
       ${detail ? `<div class="qhintbox"${open ? '' : ' hidden'}>
