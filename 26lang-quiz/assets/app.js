@@ -1602,7 +1602,7 @@ async function renderStudyView(sIdx, s) {
     <div class="card">
       <div class="field">
         <label>문법 가이드</label>
-        <select id="stGuide">${guides.map(g => `<option value="${g.key}" ${g.key === guide.key ? 'selected' : ''}>${esc(g.label || CODE_KO[LANG_CODE[g.lang]] || g.key)} — ${g.parts}파트 · 예문 ${g.examples}</option>`).join('')}</select>
+        <select id="stGuide">${guides.map(g => `<option value="${g.key}" ${g.key === guide.key ? 'selected' : ''}>${g.lang}. ${esc(g.label || CODE_KO[LANG_CODE[g.lang]] || g.key)} — ${g.parts}파트 · 예문 ${g.examples}</option>`).join('')}</select>
       </div>
       <div class="field">
         <label>공부 내용 검색</label>
@@ -1768,7 +1768,7 @@ async function renderGrammarSetup() {
   }
   const s = state.setup.grammar || (state.setup.grammar = {});
   if (!s.view) s.view = 'study';
-  if (!s.guide) s.guide = 'es';
+  if (!s.guide) s.guide = 'en';
   if (s.part == null) s.part = 0;
   if (!s.game) s.game = 'order';
   if (!s.glang) s.glang = 6;
@@ -1831,7 +1831,7 @@ async function renderGrammarSetup() {
         </div>
         <div class="field grow" style="min-width:130px">
           <label>언어</label>
-          <select id="vLang">${vmeta.langs.filter(l => l.no !== 1).map(l => `<option value="${l.no}" ${l.no === s.lang ? 'selected' : ''}>${esc(l.ko)}</option>`).join('')}</select>
+          <select id="vLang">${vmeta.langs.filter(l => l.no !== 1).map(l => `<option value="${l.no}" ${l.no === s.lang ? 'selected' : ''}>${l.no}. ${esc(l.ko)}</option>`).join('')}</select>
         </div>
       </div>
       <div class="field">
@@ -1862,7 +1862,7 @@ async function renderGrammarSetup() {
       ` : `
       <div class="field" style="margin-top:14px">
         <label>언어</label>
-        <select id="gLang2">${avail.map(l => `<option value="${l.no}" ${l.no === s.glang ? 'selected' : ''}>${esc(l.ko)} — ${has(l.no, s.game)}문항</option>`).join('')}</select>
+        <select id="gLang2">${avail.map(l => `<option value="${l.no}" ${l.no === s.glang ? 'selected' : ''}>${l.no}. ${esc(l.ko)} — ${has(l.no, s.game)}문항</option>`).join('')}</select>
       </div>
       <div class="field">
         <label>문제 수</label>
@@ -2161,7 +2161,7 @@ async function renderWordsSetup() {
     <div class="card">
       <div class="field">
         <label>언어</label>
-        <select id="wLang">${langs.map(l => `<option value="${l.no}" ${l.no === s.lang ? 'selected' : ''}>${esc(l.ko)}</option>`).join('')}</select>
+        <select id="wLang">${langs.map(l => `<option value="${l.no}" ${l.no === s.lang ? 'selected' : ''}>${l.no}. ${esc(l.ko)}</option>`).join('')}</select>
       </div>
       <div class="field">
         <label>범위</label>
@@ -2347,7 +2347,7 @@ async function renderSentSetup() {
     <div class="card">
       <div class="field">
         <label>언어 (원어 맞히기·카드에 사용)</label>
-        <select id="sLang">${langs.map(l => `<option value="${l.no}" ${l.no === s.lang ? 'selected' : ''}>${esc(l.ko)}</option>`).join('')}</select>
+        <select id="sLang">${langs.map(l => `<option value="${l.no}" ${l.no === s.lang ? 'selected' : ''}>${l.no}. ${esc(l.ko)}</option>`).join('')}</select>
       </div>
       <div class="field">
         <label>유형</label>
