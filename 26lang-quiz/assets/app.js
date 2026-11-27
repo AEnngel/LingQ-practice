@@ -736,6 +736,215 @@ function refreshWrongBadge() {
   if (el) el.textContent = wrongTotal();
 }
 
+/* ------------------------------------------------------------------ ✏️ 수정메모
+   앱을 쓰다가 고칠 곳을 그 자리에서 적어 두는 메모.
+   - 저장: localStorage('lq.memo') — 새로고침·앱을 닫아도 남는다. 서버로 보내지 않는다.
+   - 위치: 각 화면이 그릴 때 memoSet()으로 기록하고, 저장할 때 그 위치와 화면 내용을 함께 남긴다.
+   - 📋 전체 복사: 위치·화면·메모를 한 번에 복사해 대화에 붙여 넣는다. */
+const MEMO_MAX = 300;
+const TAB_NAME = { grammar: '문법', words: '단어', sent: '내 문장', lib: '자료실' };
+let memoLoc = '';        /* 지금 화면의 위치 (각 화면이 그릴 때 기록) */
+let memoOnQuiz = false;  /* 지금 화면이 문제 풀이/카드 화면인지 */
+
+function memoAll() {
+  const v = store.get('memo', []);
+  return Array.isArray(v) ? v.filter(m => m && typeof m === 'object') : [];
+}
+function memoSaveAll(list) { store.set('memo', list.slice(0, MEMO_MAX)); memoBadge(); }
+function memoSet(loc) {
+  memoLoc = String(loc || '').replace(/\s+/g, ' ').trim();
+  memoOnQuiz = false;
+}
+/* 지금 보고 있는 화면 위치 — 문제 풀이 중이면 문제 번호까지 붙는다 */
+function memoLocNow() {
+  const q = state && state.quiz;
+  if (memoOnQuiz && q) {
+    const n = q.items ? q.items.length : 0;
+    if (!n || q.idx >= n) return q.title + ' · 결과';
+    return q.title + ' · ' + Math.min(q.idx + 1, n) + '/' + n + '번째';
+  }
+  return memoLoc || TAB_NAME[(state && state.tab) || 'grammar'] || '홈';
+}
+/* 지금 화면에 보이는 문제·카드의 앞면 (어느 부분인지 알아보게) */
+function memoSnippet() {
+  const q = state && state.quiz;
+  if (!memoOnQuiz || !q || !q.items || !q.items.length) return '';
+  const it = q.items[Math.min(q.idx, q.items.length - 1)] || {};
+  const t = plainText(it.prompt || (it.front && it.front.html) || it.sub || '');
+  return t.length > 70 ? t.slice(0, 70) + '…' : t;
+}
+function memoP2(n) { return String(n).padStart(2, '0'); }
+function memoWhen(at) {
+  const d = new Date(at || Date.now());
+  return `${d.getMonth() + 1}-${memoP2(d.getDate())} ${memoP2(d.getHours())}:${memoP2(d.getMinutes())}`;
+}
+function memoWhenFull(at) {
+  const d = new Date(at || Date.now());
+  return `${d.getFullYear()}-${memoP2(d.getMonth() + 1)}-${memoP2(d.getDate())} ${memoP2(d.getHours())}:${memoP2(d.getMinutes())}`;
+}
+function memoBadge() {
+  const n = memoAll().length;
+  const b = document.getElementById('memoCount');
+  if (b) { b.textContent = n; b.hidden = !n; }
+  const btn = document.getElementById('btnMemo');
+  if (btn) btn.classList.toggle('has', !!n);
+}
+function memoSave() {
+  const box = document.getElementById('memoText');
+  const text = box ? String(box.value || '').trim() : '';
+  if (!text) { toast('적을 내용을 먼저 넣어 주세요'); if (box) box.focus(); return; }
+  const list = memoAll();
+  list.unshift({
+    id: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    loc: memoLocNow(), snip: memoSnippet(), text: text, at: Date.now()
+  });
+  memoSaveAll(list);
+  if (box) box.value = '';
+  memoDraw();
+  toast('수정메모에 저장했어요 (' + list.length + '건)');
+}
+function memoDel(id) {
+  const list = memoAll();
+  const next = list.filter(m => m.id !== id);
+  if (next.length === list.length) return;
+  memoSaveAll(next);
+  memoDraw();
+  toast('수정메모 1건을 지웠어요');
+}
+function memoClear() {
+  const n = memoAll().length;
+  if (!n) { toast('비울 수정메모가 없어요'); return; }
+  if (!confirm('수정메모 ' + n + '건을 모두 지울까요? 되돌릴 수 없어요.')) return;
+  memoSaveAll([]);
+  memoDraw();
+  toast('수정메모를 모두 지웠어요');
+}
+/* 복사할 글 — 위치 · 화면 · 메모를 대화에 그대로 붙여 넣을 수 있게 */
+function memoCopyText() {
+  const rows = memoAll();
+  if (!rows.length) return '';
+  const out = ['✏️ 26개 언어 학습 테스트 — 수정사항 ' + rows.length + '건', '복사 ' + memoWhenFull(Date.now()), ''];
+  rows.forEach((m, i) => {
+    out.push((i + 1) + ') ' + (m.loc || '위치 없음'));
+    if (m.snip) out.push('   화면: ' + m.snip);
+    out.push('   메모: ' + String(m.text || '').split('\n').join('\n   '));
+  });
+  return out.join('\n').trim();
+}
+function memoCopyLegacy(text) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '-1000px';
+    ta.style.left = '0';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    if (ta.setSelectionRange) ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand ? document.execCommand('copy') : false;
+    ta.remove();
+    return !!ok;
+  } catch (e) { return false; }
+}
+function memoCopy() {
+  const text = memoCopyText();
+  if (!text) { toast('복사할 수정메모가 없어요'); return; }
+  const done = () => {
+    const fb = document.getElementById('memoFallback');
+    if (fb) fb.hidden = true;
+    toast('수정사항 ' + memoAll().length + '건을 복사했어요 — 대화에 붙여 넣으세요', 3500);
+  };
+  const fallback = () => {
+    const fb = document.getElementById('memoFallback');
+    const ta = fb ? fb.querySelector('textarea') : null;
+    if (!fb || !ta) { toast('복사하지 못했어요. 목록의 글을 길게 눌러 복사해 주세요', 4000); return; }
+    ta.value = text;
+    fb.hidden = false;
+    ta.focus();
+    ta.select();
+    toast('자동 복사가 막혀 있어요 — 아래 글을 길게 눌러 복사해 주세요', 5000);
+  };
+  const nav = typeof navigator !== 'undefined' ? navigator : null;
+  if (nav && nav.clipboard && nav.clipboard.writeText) {
+    nav.clipboard.writeText(text).then(done).catch(() => { if (memoCopyLegacy(text)) done(); else fallback(); });
+    return;
+  }
+  if (memoCopyLegacy(text)) done(); else fallback();
+}
+function memoDraw() {
+  memoBadge();
+  const sum = document.getElementById('memoSummary');
+  const list = memoAll();
+  if (sum) sum.textContent = list.length ? list.length + '건' : '';
+  const box = document.getElementById('memoList');
+  if (!box) return;
+  box.innerHTML = list.length ? list.map(m => `<div class="memoitem">
+      <div class="memoitem-h">
+        <span class="memoitem-loc">📍 ${esc(m.loc || '위치 없음')}</span>
+        <span class="memoitem-time">${esc(memoWhen(m.at))}</span>
+        <button type="button" class="memoitem-del" data-memo-del="${esc(m.id || '')}" aria-label="이 수정메모 지우기" title="지우기">✕</button>
+      </div>
+      ${m.snip ? `<div class="memoitem-snip">화면: ${esc(m.snip)}</div>` : ''}
+      <div class="memoitem-text">${esc(m.text || '')}</div>
+    </div>`).join('')
+    : `<div class="memoempty">고칠 점을 위 칸에 적고 <b>저장</b>을 누르면 여기에 쌓입니다.<br>이 브라우저에만 저장되고 새로고침해도 남아요.</div>`;
+  $$('[data-memo-del]', box).forEach(b => b.onclick = () => memoDel(b.dataset.memoDel));
+}
+function memoOpen() {
+  const m = document.getElementById('memoModal');
+  if (!m) return;
+  const loc = document.getElementById('memoLoc');
+  if (loc) {
+    const snip = memoSnippet();
+    loc.innerHTML = `<span class="memoloc-w">📍 지금 화면</span> <b>${esc(memoLocNow())}</b>` +
+      (snip ? `<span class="memoloc-s">화면 내용: ${esc(snip)}</span>` : '');
+  }
+  const fb = document.getElementById('memoFallback');
+  if (fb) { fb.hidden = true; const ta = fb.querySelector('textarea'); if (ta) ta.value = ''; }
+  m.hidden = false;
+  m.classList.add('on');
+  m.setAttribute('aria-hidden', 'false');
+  document.documentElement.classList.add('memo-open');
+  memoDraw();
+  const box = document.getElementById('memoText');
+  if (box) setTimeout(() => { try { box.focus(); } catch (e) { } }, 40);
+}
+function memoClose() {
+  const m = document.getElementById('memoModal');
+  if (!m) return;
+  m.classList.remove('on');
+  m.hidden = true;
+  m.setAttribute('aria-hidden', 'true');
+  document.documentElement.classList.remove('memo-open');
+}
+function bindMemo() {
+  const open = document.getElementById('btnMemo');
+  if (open) open.onclick = memoOpen;
+  const close = document.getElementById('memoClose');
+  if (close) close.onclick = memoClose;
+  const modal = document.getElementById('memoModal');
+  if (modal) {
+    modal.addEventListener('click', e => { if (e.target === modal) memoClose(); });
+    if (!modal.hidden) modal.hidden = true;
+  }
+  const save = document.getElementById('memoSave');
+  if (save) save.onclick = memoSave;
+  const copy = document.getElementById('memoCopy');
+  if (copy) copy.onclick = memoCopy;
+  const clear = document.getElementById('memoClear');
+  if (clear) clear.onclick = memoClear;
+  const box = document.getElementById('memoText');
+  if (box) box.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); memoSave(); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && modal && !modal.hidden) memoClose();
+  });
+  memoDraw();
+}
+
 /* ------------------------------------------------------------------ 진행 기록 */
 function stats() { return store.get('stats', { answered: 0, correct: 0, sessions: 0 }); }
 function addStats(answered, correct) {
@@ -751,6 +960,7 @@ function go(tab) {
   TTS.stop();
   state.tab = tab;
   state.quiz = null;
+  memoSet(TAB_NAME[tab] || '홈');
   $$('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   const sub = { grammar: '문법 · 단어 · 내가 보낸 문장을 26개 언어로', words: '26개 언어 단어 · 4지선다와 플래시카드', sent: '내가 보낸 문장·표현만 모아서', lib: 'PDF 자료실 · 한곳에서 열고 받기' };
   $('#brandSub').textContent = sub[tab] || '';
@@ -770,6 +980,7 @@ function startQuiz(quiz) {
   const sc = pickSayCode(quiz.items);
   if (sc) curSayCode = sc;
   state.quiz = { title: quiz.title, mode: quiz.mode, items: quiz.items, idx: 0, answers: [], revealed: false, picked: -1, hintOpen: false };
+  memoOnQuiz = true;
   renderQuiz();
   window.scrollTo(0, 0);
 }
@@ -1247,6 +1458,7 @@ function renderOrder() {
 
 /* ================================================================== 오답 노트 */
 function renderWrongNote() {
+  memoSet('오답 노트');
   const modes = Object.keys(MODE_NAME).filter(m => wrongList(m).length);
   if (!modes.length) {
     app.innerHTML = `<div class="screen"><div class="card"><h2>오답 노트가 비어 있어요</h2>
@@ -1361,6 +1573,7 @@ async function renderStudyView(sIdx, s) {
   const parts = data.parts;
   if (s.part == null || s.part < 0 || s.part >= parts.length) s.part = 0;
   const p = parts[s.part];
+  memoSet(`문법 공부 · ${name} · ${p.part} ${p.title}`.trim());
   const says = [];
   const toc = [];
   const body = p.blocks.map((b, bi) => {
@@ -1590,6 +1803,11 @@ async function renderGrammarSetup() {
   const diffSel = () => dcounts ? (s.gdiff ? dcounts[s.gdiff - 1] : diffTotal()) : 0;
   const startLabel = () => `${GAME_NAME[s.game]} 시작` +
     (dcounts ? ` <span class="n">${diffSel()}문항</span>` : '');
+
+  const memoLang = isVerb ? ((vmeta.langs.find(l => l.no === s.lang) || {}).ko || '')
+    : (avail.some(l => l.no === s.glang) ? langName(s.glang) : '');
+  memoSet(['문법 문제', GAME_NAME[s.game], memoLang,
+    isVerb ? s.vol + '권' : (useDiff && s.gdiff ? LV_NAME[s.gdiff] : '')].filter(Boolean).join(' · '));
 
   app.innerHTML = `<div class="screen">
     <div class="segbar">
@@ -1925,6 +2143,7 @@ async function renderWordsSetup() {
   const langs = meta.langs.filter(l => l.no !== 1);
   const total = meta.counts.items;
   const sentTotal = meta.counts.sentences;
+  memoSet('단어 · ' + ((meta.langs.find(l => l.no === s.lang) || {}).ko || ''));
 
   app.innerHTML = `<div class="screen">
     <div class="card hero">
@@ -2113,6 +2332,7 @@ async function renderSentSetup() {
   });
   const langs = meta.langs.filter(l => l.no !== 1);
   const sentTotal = meta.counts.sentences;
+  memoSet('내 문장 · ' + ((meta.langs.find(l => l.no === s.lang) || {}).ko || ''));
   const sentByBatch = {};
   items.forEach(it => { if (it[4]) sentByBatch[it[0]] = (sentByBatch[it[0]] || 0) + 1; });
 
@@ -2296,6 +2516,8 @@ async function renderLibrary() {
   try { lib = await DATA.library(); }
   catch (e) { app.innerHTML = `<div class="card"><h2>자료실을 불러오지 못했어요</h2><p class="desc">${esc(e.message)}</p></div>`; return; }
   const st = state.setup.lib || (state.setup.lib = { cat: 'all', q: '' });
+  memoSet('자료실' + (st.cat !== 'all' ? ' · ' + ((lib.categories.find(c => c.key === st.cat) || {}).name || '') : '') +
+    (st.q ? ' · 검색: ' + st.q : ''));
 
   function draw() {
     const q = st.q.trim().toLowerCase();
@@ -2349,5 +2571,6 @@ async function renderLibrary() {
 
 /* ================================================================== 시작 */
 refreshWrongBadge();
+bindMemo();
 soundHelpBanner();
 go('grammar');

@@ -544,3 +544,103 @@ select { background-image: linear-gradient(45deg, transparent 50%, var(--ink3) 5
 }
 @media (min-width: 760px) { .sndbanner { margin: 10px 16px 0; } }
 
+/* ---------------------------------------------------------------- ✏️ 수정메모 */
+#btnMemo { display: inline-flex; align-items: center; gap: 5px; }
+#btnMemo .mlbl { white-space: nowrap; }
+#btnMemo .mcount {
+  min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--accent); color: #fff; font-size: 10.5px; font-weight: 800;
+  font-variant-numeric: tabular-nums; line-height: 1;
+}
+#btnMemo .mcount[hidden] { display: none; }
+#btnMemo.has { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+
+html.memo-open, html.memo-open body { overflow: hidden; }
+
+.memomodal {
+  position: fixed; inset: 0; z-index: 9500;
+  display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(12, 18, 30, .46);
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+}
+.memomodal[hidden] { display: none; }
+.memopanel {
+  width: 100%; max-width: 560px; max-height: 88vh; max-height: 88dvh;
+  display: flex; flex-direction: column; gap: 9px;
+  background: var(--card); color: var(--ink);
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -8px 30px rgba(10, 18, 35, .3);
+  padding: 14px 14px calc(12px + env(safe-area-inset-bottom));
+  animation: memoup .2s ease;
+}
+@media (min-width: 640px) {
+  .memomodal { align-items: center; padding: 24px; }
+  .memopanel { border-radius: 18px; max-height: 84vh; }
+}
+@keyframes memoup { from { transform: translateY(16px); opacity: .55; } to { transform: none; opacity: 1; } }
+.memohead { display: flex; align-items: center; gap: 8px; }
+.memohead h2 { flex: 1 1 auto; font-size: 16px; }
+.memosum { flex: none; font-size: 12px; font-weight: 700; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 2px 9px; }
+.memosum:empty { display: none; }
+.memoclose {
+  flex: none; width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink2);
+  font-size: 14px; line-height: 1; padding: 0; cursor: pointer;
+}
+.memoclose:active { background: var(--accent-soft); }
+
+.memoloc {
+  font-size: 12.5px; color: var(--ink2); background: var(--accent-soft);
+  border-radius: 10px; padding: 8px 11px; line-height: 1.5; word-break: keep-all;
+}
+.memoloc b { color: var(--ink); font-weight: 700; }
+.memoloc .memoloc-w { font-size: 11.5px; font-weight: 800; color: var(--accent); margin-right: 2px; }
+.memoloc .memoloc-s { display: block; margin-top: 3px; font-size: 12px; color: var(--ink3); }
+
+#memoText, #memoFallbackText {
+  width: 100%; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--bg); color: var(--ink); font: inherit; font-size: 14.5px;
+  line-height: 1.5; padding: 10px 12px; resize: vertical;
+}
+#memoText { min-height: 76px; }
+#memoText:focus, #memoFallbackText:focus { outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 1px; }
+#memoText::placeholder { color: var(--ink3); }
+
+.memoactions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.memoactions #memoSave { flex: 1 1 110px; padding: 11px 14px; }
+.memoactions .btn.sm { flex: 0 0 auto; }
+
+.memopanel > * { flex: none; }
+.memolist { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 8px; padding-bottom: 2px; }
+.memoitem { border: 1px solid var(--line); border-radius: 12px; padding: 9px 11px; background: var(--bg); }
+.memoitem-h { display: flex; align-items: center; gap: 8px; }
+.memoitem-loc { flex: 1 1 auto; min-width: 0; font-size: 11.5px; font-weight: 700; color: var(--accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.memoitem-time { flex: none; font-size: 11px; color: var(--ink3); font-variant-numeric: tabular-nums; }
+.memoitem-del {
+  flex: none; width: 22px; height: 22px; border-radius: 50%; padding: 0;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink3);
+  font-size: 11px; line-height: 1; cursor: pointer;
+}
+.memoitem-del:active { background: var(--red-soft); color: var(--red); }
+.memoitem-snip { margin-top: 5px; font-size: 11.5px; color: var(--ink3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.memoitem-text { margin-top: 4px; font-size: 13.5px; color: var(--ink); white-space: pre-wrap; word-break: break-word; }
+.memoempty { text-align: center; color: var(--ink3); font-size: 12.5px; line-height: 1.6; padding: 14px 6px; }
+.memoempty b { color: var(--ink2); }
+
+.memofallback { display: block; }
+.memofallback[hidden] { display: none; }
+.memofallback label { display: block; font-size: 11.5px; font-weight: 700; color: var(--gold); margin-bottom: 5px; }
+.memofallback textarea { min-height: 96px; font-size: 12.5px; }
+
+.memosub { margin: 0; font-size: 11.5px; color: var(--ink3); line-height: 1.5; word-break: keep-all; }
+
+@media (max-width: 420px) {
+  .topbar { gap: 6px; padding-left: 12px; padding-right: 12px; }
+  .topbar h1 { font-size: 13px; }
+  .topbar p { font-size: 10.5px; }
+  .topactions { gap: 6px; }
+  .ghost { padding: 6px 9px; font-size: 11.5px; }
+  #btnMemo { gap: 3px; }
+}
+@media (max-width: 359px) { #btnMemo .mlbl { display: none; } }
