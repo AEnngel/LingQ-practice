@@ -754,6 +754,8 @@ function memoSaveAll(list) { store.set('memo', list.slice(0, MEMO_MAX)); memoBad
 function memoSet(loc) {
   memoLoc = String(loc || '').replace(/\s+/g, ' ').trim();
   memoOnQuiz = false;
+  /* 통합 바의 📝 수정 메모(assets/fixnotes.js)가 이 화면 위치를 함께 적는다 */
+  try { window.__lqMemoLoc = memoLoc; } catch (e) { }
 }
 /* 지금 보고 있는 화면 위치 — 문제 풀이 중이면 문제 번호까지 붙는다 */
 function memoLocNow() {

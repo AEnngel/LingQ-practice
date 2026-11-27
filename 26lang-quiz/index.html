@@ -57,7 +57,6 @@
   </div>
   <div class="topactions">
     <button class="ghost" id="btnWrong" title="오답 노트">오답 <span id="wrongCount">0</span></button>
-    <button class="ghost" id="btnMemo" title="수정할 점을 적어 두는 메모" aria-haspopup="dialog" aria-controls="memoModal">✏️ <span class="mlbl">수정메모</span><span class="mcount" id="memoCount" hidden>0</span></button>
   </div>
 </header>
 
@@ -70,31 +69,10 @@
   <button class="tab" data-tab="lib"><span>📚</span>자료실</button>
 </nav>
 
-<!-- ===== ✏️ 수정메모 (이 브라우저에만 저장) ===== -->
-<div class="memomodal" id="memoModal" hidden aria-hidden="true">
-  <div class="memopanel" role="dialog" aria-modal="true" aria-labelledby="memoTitle">
-    <div class="memohead">
-      <h2 id="memoTitle">✏️ 수정메모</h2>
-      <span class="memosum" id="memoSummary"></span>
-      <button type="button" class="memoclose" id="memoClose" aria-label="닫기" title="닫기">✕</button>
-    </div>
-    <div class="memoloc" id="memoLoc"></div>
-    <textarea id="memoText" rows="3" autocomplete="off" spellcheck="false"
-      placeholder="여기에 수정사항을 적어 주세요 — 예: 이 문제 보기 3번이 'fuí'가 아니라 'fui'예요"></textarea>
-    <div class="memoactions">
-      <button type="button" class="btn" id="memoSave">저장</button>
-      <button type="button" class="btn plain sm" id="memoCopy">📋 전체 복사</button>
-      <button type="button" class="btn plain sm" id="memoClear">전체 비우기</button>
-    </div>
-    <div class="memolist" id="memoList"></div>
-    <div class="memofallback" id="memoFallback" hidden>
-      <label for="memoFallbackText">자동 복사가 막혀 있어요 — 아래 글을 길게 눌러 복사해 주세요</label>
-      <textarea id="memoFallbackText" rows="5" readonly></textarea>
-    </div>
-    <p class="memosub">적은 내용은 이 브라우저에만 저장되고 새로고침해도 남습니다. 📋 전체 복사로 위치·화면·메모를 한 번에 붙여 넣을 수 있어요.</p>
-  </div>
-</div>
+<!-- 📝 수정 메모는 세 화면 공통 모듈(assets/fixnotes.js)이 통합 바 오른쪽에 붙입니다.
+     예전 ✏️ 수정메모(lq.memo)에 쌓인 메모는 새 모듈이 처음 한 번 옮겨 옵니다. -->
 
 <script src="assets/app.js?v=1795807971"></script>
+<script src="../assets/fixnotes.js?v=1"></script>
 </body>
 </html>
