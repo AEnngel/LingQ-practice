@@ -161,6 +161,30 @@
   .q-feedback.ok { color: #15803d; }
   .q-feedback.no { color: #b91c1c; }
   .q-score { font-size: 0.8rem; color: var(--muted); font-weight: 700; }
+  /* ----- 퀴즈·듣기: 단어별 한국어 발음 칩 ----- */
+  .wchips { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 9px; }
+  .wchip {
+    display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px; max-width: 100%;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 999px;
+    padding: 3px 9px; font-size: 0.8rem; line-height: 1.4;
+  }
+  .wchip b { font-weight: 800; word-break: break-word; }
+  .wchip .wp { color: var(--primary); font-weight: 700; }
+  .wchip .wm { color: #475569; font-weight: 600; }
+  .wchip .wm::before { content: '· '; color: #94a3b8; }
+  .q-hint-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 7px; }
+  .q-hint-row button { padding: 4px 9px; font-size: 0.78rem; }
+  .quiz-opt .opt-pron { display: block; margin-top: 2px; font-size: 0.78rem; font-weight: 600; color: var(--primary); }
+  /* ----- 단어 테스트 ----- */
+  .word-q { text-align: center; margin: 4px 0 14px; }
+  .word-orig { font-size: 1.95rem; font-weight: 800; line-height: 1.25; word-break: break-word; overflow-wrap: anywhere; }
+  .word-pron { margin-top: 5px; font-size: 1rem; font-weight: 700; color: var(--primary); word-break: break-word; }
+  .word-ask { margin-top: 6px; font-size: 0.78rem; font-weight: 700; color: var(--muted); }
+  .word-badge { display: inline-block; margin-bottom: 6px; font-size: 0.72rem; font-weight: 800; color: #1e40af; background: #dbeafe; border-radius: 999px; padding: 2px 9px; }
+  .star-sec-title { font-size: 0.84rem; font-weight: 800; color: var(--muted); margin: 16px 0 7px; }
+  .star-item .wr { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+  .star-item .wr .w { font-size: 1.02rem; font-weight: 800; }
+  .star-item .wr .p { color: var(--primary); font-weight: 700; font-size: 0.86rem; }
   .compare-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
   .star-item { border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 9px; background: #fff; }
   .star-item .meta { font-size: 0.76rem; color: var(--muted); font-weight: 700; margin-bottom: 3px; }
@@ -223,7 +247,7 @@
 <header>
   <div class="header-inner">
     <div class="title-row">
-      <h1>🌐 LingQ 미니 스토리 연습장 <span class="ver">v14</span> <span class="range">1a~22b · 65편</span></h1>
+      <h1>🌐 LingQ 미니 스토리 연습장 <span class="ver">v15</span> <span class="range">1a~22b · 65편</span></h1>
       <div class="tabs">
         <button class="tab-btn active" data-mode="card">카드 학습</button>
         <button class="tab-btn" data-mode="quiz">퀴즈</button>
@@ -284,6 +308,7 @@
       <select id="quiz-type" onchange="newQuiz()">
         <option value="meaning">4지선다 — 뜻 맞추기</option>
         <option value="cloze">소리 듣고 빈칸 채우기</option>
+        <option value="word">단어 테스트 — 단어 뜻 맞추기</option>
       </select>
       <select id="quiz-scope" onchange="newQuiz()" title="문제를 어느 회차에서 낼지 고릅니다">
         <option value="chapter">출제 범위: 현재 챕터만</option>
@@ -310,7 +335,7 @@
   <!-- 별표 복습함 -->
   <section id="mode-stars" class="hidden">
     <div class="controls">
-      <span style="font-size:0.86rem; color:var(--muted); font-weight:700;">★ 표시한 문장을 모아 둡니다 (이 기기에 저장)</span>
+      <span style="font-size:0.86rem; color:var(--muted); font-weight:700;">★ 표시한 문장·단어를 모아 둡니다 (이 기기에 저장)</span>
       <button onclick="exportStars()">내보내기</button>
       <button class="btn-stop" onclick="clearStars()">전체 비우기</button>
     </div>
@@ -328,6 +353,8 @@
    - 아이슬란드·아일랜드·웨일스·아프리칸스·라틴어 + 스코츠·셔틀랜드·오크니·스코틀랜드 게일어까지 9개 언어 audio/*.mp3 우선 재생
    - 언어 비교 카드마다 🔊 듣기
    - 퀴즈: 뜻 4지선다 / 소리 듣고 빈칸, 오답 1회 재시도·정답 시 자동 다음 문제
+   - v15: 퀴즈·듣기 화면에 단어별 한국어 발음 칩(🔤)·뜻 힌트(💡)·빈칸 보기 발음 병기
+   - v15: 단어 테스트 — 회차·언어의 words로 뜻 4지선다·단어 듣기·오답은 ★ 복습함+다시 풀기
    - ★ 복습함(localStorage)
    - 중국어 간체·번체 병기 + 성조 범례
    ========================================================= */
@@ -348,6 +375,12 @@ var STARS = {};
 var LANGNAMES = {};
 var seq = { active: false, mode: '', ids: [], si: 0, idx: 0, token: 0, watch: null, lang: '' };
 var quizState = { lang: '', type: 'clue', correct: null, sent: null, answered: false, attempts: 0, right: 0, total: 0, timer: null, clozeWord: null };
+/* 단어 테스트(v15) — 회차·언어의 words 데이터로 뜻 4지선다 */
+var wordState = { key: '', pool: [], queue: [], cur: null, prev: null, langObj: null, opts: [], answered: false, attempts: 0, right: 0, total: 0, timer: null };
+var wordPoolCache = {};
+var wordSeq = 0;
+var WSTARS = {};            /* 단어 ★ 복습함 — { '1a|en': [ {w,p,m,tts,name} ] } */
+var QSHOW = { pron: true }; /* 퀴즈 화면 단어 발음 칩 표시 여부 */
 
 /* ---------- 저장소 ---------- */
 function lsGet(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
@@ -357,6 +390,8 @@ function loadPrefs() {
   hideState = lsGet('lq12_hide', hideState) || hideState;
   STARS = lsGet('lq12_stars', {}) || {};
   LANGNAMES = lsGet('lq12_names', {}) || {};
+  WSTARS = lsGet('lq12_wstars', {}) || {};
+  QSHOW.pron = lsGet('lq12_qpron', true) !== false;
 }
 function savePrefs() { lsSet('lq12_speed', speed); lsSet('lq12_hide', hideState); }
 
@@ -530,6 +565,7 @@ function toggleStar() {
 function updateStarCount() {
   var n = 0;
   for (var k in STARS) if (STARS.hasOwnProperty(k)) n += STARS[k].length;
+  n += wordStarCount();
   document.getElementById('star-count').textContent = n ? '(' + n + ')' : '';
 }
 
@@ -1164,6 +1200,7 @@ function buildQuizPool(langCode, cb) {
 function newQuiz() {
   if (!STORY) return;
   if (quizState.timer) { clearTimeout(quizState.timer); quizState.timer = null; }
+  if (wordState.timer) { clearTimeout(wordState.timer); wordState.timer = null; }
   var lang = quizLang();
   if (!lang || !lang.sents.length) return;
   var type = quizType();
@@ -1171,6 +1208,7 @@ function newQuiz() {
   quizState.type = type;
   quizState.answered = false;
   quizState.attempts = 0;
+  if (type === 'word') { newWordQuiz(lang); return; }
   var mySeq = ++quizSeq;
   if (quizScope() === 'all' && !(quizPoolCache[lang.code] && quizPoolCache[lang.code].length)) {
     document.getElementById('quiz-body').innerHTML = '<div class="empty">전체 회차에서 문제를 고르는 중… 처음 한 번만 불러옵니다.</div>';
@@ -1231,22 +1269,25 @@ function renderQuizBody(lang, type, items) {
         if (ww.length < 2 || badBlankRow(ss.w[k])) continue;
         if (seen[ww.toLowerCase()]) continue;
         seen[ww.toLowerCase()] = 1;
-        pool.push(ww);
+        pool.push({ t: ww, pron: String(ss.w[k][1] || '') });
       }
     }
-    var opts = [{ t: core2, ok: true }];
+    var opts = [{ t: core2, pron: String(picked[1] || ''), ok: true }];
     var guard = 0;
-    while (opts.length < 4 && guard++ < 200 && pool.length) opts.push({ t: pool.splice(rnd(pool.length), 1)[0], ok: false });
+    while (opts.length < 4 && guard++ < 200 && pool.length) opts.push(pool.splice(rnd(pool.length), 1)[0]);
     opts = shuffle(opts);
     var optsHtml = '';
     for (var j = 0; j < opts.length; j++) {
-      optsHtml += '<button class="quiz-opt" onclick="checkQuiz(this, ' + (opts[j].ok ? 'true' : 'false') + ')">' + esc(opts[j].t) + '</button>';
+      optsHtml += '<button class="quiz-opt" onclick="checkQuiz(this, ' + (opts[j].ok ? 'true' : 'false') + ')">' + esc(opts[j].t) +
+        (lang.code !== 'ko' && opts[j].pron ? '<span class="opt-pron">' + formatTags(opts[j].pron) + '</span>' : '') + '</button>';
     }
     body.innerHTML =
       '<div class="card-top"><span>' + esc(fromSid) + ' · ' + esc(lang.name) + ' 빈칸 듣기</span>' +
       '<span>' + (quizScope() === 'all' ? '<span class="chip">출제 ' + esc(fromSid) + ' · 전체 랜덤</span> ' : '') + '<span id="quiz-tts-voice-info">' + esc(voiceStatusBase(lang)) + '</span></span></div>' +
       '<div class="card-top" style="margin-bottom:6px;"><span>소리를 듣고 빈칸에 들어갈 낱말을 고르세요</span></div>' +
       '<div class="q-blank">' + esc(shown).replace('____', '<span class="blank">____</span>') + '</div>' +
+      quizHintRowHtml() +
+      '<div id="quiz-word-wrap"></div>' +
       '<div class="quiz-audio">' +
         '<button class="btn-primary" onclick="quizSpeak()">🔊 다시 듣기</button>' +
         '<button onclick="quizSpeak(0.7)">🐢 느리게</button>' +
@@ -1281,6 +1322,8 @@ function renderQuizBody(lang, type, items) {
       (correct.lb ? '<span class="label-chip ' + (correct.lb === '질문' ? 'q' : 'a') + '">' + esc(correct.lb) + '</span>' : '') +
       '<div class="orig-text">' + esc(correct.o) + '</div>' +
       (correct.p ? '<div style="color:var(--muted); margin-bottom:10px;">발음: ' + formatTags(correct.p) + '</div>' : '') +
+      quizHintRowHtml() +
+      '<div id="quiz-word-wrap"></div>' +
       '<div class="quiz-audio">' +
         '<button class="btn-primary" onclick="quizSpeak()">🔊 다시 듣기</button>' +
         '<button onclick="quizSpeak(0.7)">🐢 느리게</button>' +
@@ -1290,6 +1333,7 @@ function renderQuizBody(lang, type, items) {
   updateQuizScore();
   quizSpeak();
   refreshQuizVoiceStatus();
+  renderQuizChips();
 }
 function quizSpeak(mult) {
   var lang = quizState.langObj || quizLang();
@@ -1317,6 +1361,7 @@ function checkQuiz(btn, isCorrect) {
       fb.textContent = '정답입니다! ' + (quizState.type === 'cloze' && quizState.clozeWord ? ('‘' + quizState.correct + '’ — ' + quizState.clozeWord[2]) : '');
     }
     updateQuizScore();
+    renderQuizChips();
     quizState.timer = setTimeout(function () {
       quizState.timer = null;
       if (document.getElementById('mode-quiz').classList.contains('hidden')) return;
@@ -1345,6 +1390,7 @@ function checkQuiz(btn, isCorrect) {
     fb.textContent = '아쉬워요. 정답: ' + quizState.correct + (quizState.type === 'cloze' && quizState.clozeWord ? (' (' + quizState.clozeWord[2] + ')') : '');
   }
   updateQuizScore();
+  renderQuizChips();
   quizState.timer = setTimeout(function () {
     quizState.timer = null;
     if (document.getElementById('mode-quiz').classList.contains('hidden')) return;
@@ -1352,7 +1398,329 @@ function checkQuiz(btn, isCorrect) {
   }, 1500);
 }
 function updateQuizScore() {
-  document.getElementById('quiz-score').textContent = quizState.total ? ('정답 ' + quizState.right + ' / ' + quizState.total) : '';
+  var el = document.getElementById('quiz-score');
+  if (!el) return;
+  if (quizState.type === 'word') {
+    el.textContent = wordState.total ? ('정답 ' + wordState.right + ' / ' + wordState.total) : '';
+    return;
+  }
+  el.textContent = quizState.total ? ('정답 ' + quizState.right + ' / ' + quizState.total) : '';
+}
+
+/* ---------- v15: 퀴즈·듣기 단어별 한국어 발음 칩 ---------- */
+function wordPronLabel(lang) { return (lang && lang.code === 'ko') ? '품사' : '발음'; }
+
+/* 단어 행(word, 발음, 뜻)을 칩으로 — showMeaning=false 이면 뜻은 감춘다 */
+function chipsHtmlForWords(rows, lang, showMeaning, skipWord) {
+  if (!rows || !rows.length) return '';
+  var out = '';
+  for (var i = 0; i < rows.length; i++) {
+    var w = rows[i];
+    if (!w || !w[0]) continue;
+    if (skipWord && cleanWord(w[0]).toLowerCase() === skipWord.toLowerCase()) continue;
+    out += '<span class="wchip"><b>' + esc(w[0]) + '</b>' +
+      (w[1] ? '<span class="wp">' + formatTags(w[1]) + '</span>' : '') +
+      (showMeaning && w[2] ? '<span class="wm">' + esc(w[2]) + '</span>' : '') +
+      '</span>';
+  }
+  return out ? '<div class="wchips">' + out + '</div>' : '';
+}
+
+function quizHintRowHtml() {
+  return '<div class="q-hint-row">' +
+    '<button id="btn-q-pron" class="btn-toggle active" onclick="toggleQuizPron()">🔤 단어 발음 숨기기</button>' +
+    '<button id="btn-q-mean" class="btn-toggle" onclick="toggleQuizMeaning()">💡 뜻 힌트</button>' +
+    '</div>';
+}
+
+function renderQuizChips() {
+  var wrap = document.getElementById('quiz-word-wrap');
+  var btnP = document.getElementById('btn-q-pron');
+  var btnM = document.getElementById('btn-q-mean');
+  var lang = quizState.langObj || quizLang();
+  var done = !!quizState.answered;
+  if (btnP) {
+    btnP.className = 'btn-toggle' + (QSHOW.pron ? ' active' : '');
+    btnP.textContent = '🔤 단어 ' + wordPronLabel(lang) + (QSHOW.pron ? ' 숨기기' : ' 보기');
+  }
+  if (btnM) {
+    btnM.className = 'btn-toggle' + ((QSHOW.mean || done) ? ' active' : '');
+    btnM.textContent = done ? '💡 뜻 펼침' : (QSHOW.mean ? '💡 뜻 힌트 끄기' : '💡 뜻 힌트');
+    btnM.disabled = done;
+  }
+  if (!wrap) return;
+  if (quizState.type === 'word' || !QSHOW.pron || !quizState.sent) { wrap.innerHTML = ''; return; }
+  /* 빈칸 문제는 정답을 맞히기 전까지 그 빈칸 낱말의 칩을 감춘다(스포일러 방지) */
+  var skip = (quizState.type === 'cloze' && !done && quizState.clozeWord) ? cleanWord(quizState.clozeWord[0]) : '';
+  wrap.innerHTML = chipsHtmlForWords(quizState.sent.w, lang, QSHOW.mean || done, skip);
+}
+
+function toggleQuizPron() {
+  QSHOW.pron = !QSHOW.pron;
+  lsSet('lq12_qpron', QSHOW.pron);
+  renderQuizChips();
+}
+function toggleQuizMeaning() {
+  QSHOW.mean = !QSHOW.mean;
+  renderQuizChips();
+}
+
+/* ---------- v15: 단어 테스트 (회차·언어의 words → 뜻 4지선다) ---------- */
+function newWordQuiz(lang) {
+  lang = lang || quizLang();
+  if (!lang || !lang.sents.length) return;
+  if (wordState.timer) { clearTimeout(wordState.timer); wordState.timer = null; }
+  quizState.langObj = lang;
+  quizState.sent = null;
+  var scope = quizScope();
+  var key = (scope === 'all' ? 'ALL' : storyId) + '|' + lang.code;
+  var mySeq = ++wordSeq;
+  if (wordPoolCache[key] && wordPoolCache[key].length) { wordStart(lang, wordPoolCache[key], key); return; }
+  document.getElementById('quiz-body').innerHTML = '<div class="empty">단어를 모으는 중…' +
+    (scope === 'all' ? ' 전체 회차에서 처음 한 번만 불러옵니다.' : '') + '</div>';
+  buildWordPool(lang.code, scope, function (items) {
+    if (mySeq !== wordSeq) return;
+    if (!items || items.length < 4) {
+      document.getElementById('quiz-body').innerHTML = '<div class="empty">이 회차·언어에서 단어를 충분히 모지 못했습니다.<br>다른 언어를 고르거나 출제 범위를 ‘전체 챕터 랜덤’으로 바꿔 주세요.</div>';
+      return;
+    }
+    if (!wordPoolCache[key]) wordPoolCache[key] = items;
+    wordStart(lang, items, key);
+  });
+}
+
+/* 회차(또는 전체 14편)의 해당 언어 words에서 중복 없이 단어를 모은다 */
+function buildWordPool(langCode, scope, cb) {
+  var ids;
+  if (scope === 'all') {
+    ids = shuffle(MANIFEST.map(function (m) { return m.id; })).slice(0, 14);
+    if (storyId && ids.indexOf(storyId) === -1) ids.unshift(storyId);
+  } else {
+    ids = storyId ? [storyId] : [];
+  }
+  var items = [], seen = {}, left = ids.length;
+  if (!left) { cb(items); return; }
+  ids.forEach(function (id) {
+    fetchStory(id)
+      .then(function (d) {
+        var l = null;
+        for (var i = 0; i < d.langs.length; i++) if (d.langs[i].code === langCode) l = d.langs[i];
+        if (!l) return;
+        for (var s = 0; s < l.sents.length; s++) {
+          var rows = l.sents[s].w || [];
+          for (var k = 0; k < rows.length; k++) {
+            var wd = String(rows[k][0] || '').trim();
+            var core = cleanWord(wd);
+            var mean = String(rows[k][2] || '').trim();
+            if (!core || !mean) continue;
+            var lk = core.toLowerCase();
+            if (seen[lk]) continue;
+            seen[lk] = 1;
+            items.push({ w: wd, p: String(rows[k][1] || ''), m: mean, s: l.sents[s].o || '', sid: id, code: langCode, tts: l.tts || '', name: l.name || langCode });
+          }
+        }
+      })
+      .catch(function () {})
+      .then(function () { if (--left === 0) cb(items); });
+  });
+}
+
+function wordStart(lang, pool, key) {
+  if (wordState.key !== key) {
+    wordState.key = key;
+    wordState.queue = [];
+    wordState.prev = null;
+    wordState.total = 0;
+    wordState.right = 0;
+  }
+  wordState.pool = pool;
+  wordState.langObj = lang;
+  if (!wordState.queue.length) wordState.queue = shuffle(pool.slice());
+  var cur = wordState.queue.shift();
+  var guard = 0;
+  while (cur && wordState.prev && cur.w === wordState.prev.w && wordState.queue.length && guard++ < 30) {
+    wordState.queue.push(cur);
+    cur = wordState.queue.shift();
+  }
+  if (!cur) {
+    document.getElementById('quiz-body').innerHTML = '<div class="empty">출제할 단어가 없습니다.</div>';
+    return;
+  }
+  wordState.prev = cur;
+  wordState.cur = cur;
+  wordState.answered = false;
+  wordState.attempts = 0;
+
+  /* 보기: 정답 뜻 + 같은 언어의 다른 뜻 3개 (중복 뜻 제거, 뜻 길이가 비슷한 것부터) */
+  var seenM = {};
+  seenM[cur.m] = 1;
+  var cands = [], sh = shuffle(pool.slice());
+  for (var i = 0; i < sh.length; i++) {
+    if (seenM[sh[i].m]) continue;
+    seenM[sh[i].m] = 1;
+    cands.push(sh[i].m);
+  }
+  cands.sort(function (a, b) { return Math.abs(a.length - cur.m.length) - Math.abs(b.length - cur.m.length); });
+  var near = shuffle(cands.slice(0, Math.min(8, cands.length)));
+  var distr = near.slice(0, 3);
+  if (distr.length < 3) {
+    document.getElementById('quiz-body').innerHTML = '<div class="empty">보기를 만들 뜻이 부족합니다. 출제 범위를 ‘전체 챕터 랜덤’으로 바꿔 보세요.</div>';
+    return;
+  }
+  var opts = shuffle([{ t: cur.m, ok: true }].concat(distr.map(function (m) { return { t: m, ok: false }; })));
+  wordState.opts = opts;
+  renderWordQuestion(lang, cur, opts);
+}
+
+function renderWordQuestion(lang, cur, opts) {
+  var body = document.getElementById('quiz-body');
+  var isKo = lang.code === 'ko';
+  var starred = wordIsStarred(cur);
+  var html = '';
+  for (var i = 0; i < opts.length; i++) {
+    html += '<button class="quiz-opt" onclick="checkWordQuiz(this, ' + (opts[i].ok ? 'true' : 'false') + ')">' + esc(opts[i].t) + '</button>';
+  }
+  body.innerHTML =
+    '<div class="card-top"><span>' + esc(cur.sid) + ' · ' + esc(lang.name) + ' 단어 테스트</span>' +
+      '<span>' + (quizScope() === 'all' ? '<span class="chip">전체 랜덤</span> ' : '') + '<span id="quiz-tts-voice-info">' + esc(voiceStatusBase(lang)) + '</span></span></div>' +
+    '<div class="word-q">' +
+      '<div class="word-badge">' + (isKo ? '뜻 고르기' : '듣기 · 발음 · 뜻 고르기') + '</div>' +
+      '<div class="word-orig">' + esc(cur.w) + '</div>' +
+      '<div class="word-pron' + (QSHOW.pron ? '' : ' hidden-blur') + '" id="word-test-pron" onclick="this.classList.toggle(\'hidden-blur\')" title="누르면 가리기/보기">' +
+        (isKo ? ('품사 · ' + esc(cur.p || '—')) : formatTags(cur.p || '—')) + '</div>' +
+      '<div class="word-ask">' + (isKo ? '이 낱말의 뜻을 고르세요' : '뜻을 고르세요 · 발음은 눌러서 가리거나 보여요') + '</div>' +
+    '</div>' +
+    '<div class="quiz-audio">' +
+      '<button class="btn-primary" onclick="wordSpeak()">🔊 단어 듣기</button>' +
+      '<button onclick="wordSpeak(0.7)">🐢 느리게</button>' +
+      (cur.s ? '<button onclick="wordSpeakSentence()">📖 예문 듣기</button>' : '') +
+      '<button class="btn-toggle' + (QSHOW.pron ? ' active' : '') + '" onclick="toggleWordPron()">🔤 발음 ' + (QSHOW.pron ? '가리기' : '보기') + '</button>' +
+      '<button class="star-btn ' + (starred ? 'on' : '') + '" onclick="toggleWordStar()">' + (starred ? '★ 저장됨' : '☆ 복습함에 담기') + '</button>' +
+    '</div>' + html +
+    '<div class="q-feedback" id="q-feedback"></div>';
+  updateQuizScore();
+  wordSpeak();
+  refreshQuizVoiceStatus();
+}
+
+function wordSpeak(mult) {
+  var lang = wordState.langObj || quizLang();
+  if (!lang || !wordState.cur) return;
+  speakText(wordState.cur.w, lang, speed * (mult === 0.7 ? 0.7 : 1), 'quiz-tts-voice-info');
+}
+/* 예문(단어가 들어간 문장) 듣기 — mp3 음원이 있는 언어는 그 소리로 나온다 */
+function wordSpeakSentence() {
+  var lang = wordState.langObj || quizLang();
+  if (!lang || !wordState.cur || !wordState.cur.s) return;
+  speakText(wordState.cur.s, lang, speed, 'quiz-tts-voice-info');
+}
+
+function toggleWordPron() {
+  QSHOW.pron = !QSHOW.pron;
+  lsSet('lq12_qpron', QSHOW.pron);
+  var p = document.getElementById('word-test-pron');
+  if (p) p.classList.toggle('hidden-blur', !QSHOW.pron);
+  var b = document.querySelector('#quiz-body .quiz-audio .btn-toggle');
+  if (b) { b.classList.toggle('active', QSHOW.pron); b.textContent = '🔤 발음 ' + (QSHOW.pron ? '가리기' : '보기'); }
+}
+
+function wordIsStarred(cur) {
+  if (!cur || !wordState.langObj) return false;
+  var list = WSTARS[cur.sid + '|' + wordState.langObj.code] || [];
+  for (var i = 0; i < list.length; i++) if (list[i].w === cur.w) return true;
+  return false;
+}
+
+/* 단어를 ★ 복습함(lq12_wstars)에 담는다 — 이미 있으면 false */
+function addWordStar(cur, lang) {
+  if (!cur || !lang) return false;
+  var key = cur.sid + '|' + lang.code;
+  var list = (WSTARS[key] || []).slice();
+  for (var i = 0; i < list.length; i++) if (list[i].w === cur.w) return false;
+  list.push({ w: cur.w, p: cur.p || '', m: cur.m || '', tts: lang.tts || '', name: lang.name || lang.code });
+  WSTARS[key] = list;
+  lsSet('lq12_wstars', WSTARS);
+  updateStarCount();
+  return true;
+}
+
+function toggleWordStar() {
+  var cur = wordState.cur, lang = wordState.langObj;
+  if (!cur || !lang) return;
+  var key = cur.sid + '|' + lang.code;
+  var list = (WSTARS[key] || []).slice();
+  var at = -1;
+  for (var i = 0; i < list.length; i++) if (list[i].w === cur.w) { at = i; break; }
+  var on;
+  if (at === -1) { addWordStar(cur, lang); on = true; }
+  else {
+    list.splice(at, 1);
+    if (list.length) WSTARS[key] = list; else delete WSTARS[key];
+    lsSet('lq12_wstars', WSTARS);
+    updateStarCount();
+    on = false;
+  }
+  var b = document.querySelector('#quiz-body .quiz-audio .star-btn');
+  if (b) { b.className = 'star-btn' + (on ? ' on' : ''); b.textContent = on ? '★ 저장됨' : '☆ 복습함에 담기'; }
+}
+
+/* 오답 — 이번 세션 대기열 끝에 다시 넣고 ★ 복습함에도 담는다 */
+function saveWrongWord() {
+  var cur = wordState.cur, lang = wordState.langObj;
+  if (!cur || !lang) return false;
+  wordState.queue.push(cur);
+  addWordStar(cur, lang);
+  return true;
+}
+
+function checkWordQuiz(btn, isCorrect) {
+  if (wordState.answered) return;
+  var opts = document.querySelectorAll('#quiz-body .quiz-opt');
+  var fb = document.getElementById('q-feedback');
+
+  if (isCorrect) {
+    wordState.answered = true;
+    for (var i = 0; i < opts.length; i++) {
+      opts[i].disabled = true;
+      if (opts[i] !== btn && (opts[i].getAttribute('onclick') || '').indexOf('true') !== -1) opts[i].classList.add('correct');
+    }
+    btn.classList.add('correct');
+    wordState.total++;
+    if (wordState.attempts === 0) wordState.right++;
+    if (fb) { fb.className = 'q-feedback ok'; fb.textContent = '정답! ' + wordState.cur.w + ' — ' + wordState.cur.m; }
+    updateQuizScore();
+    wordState.timer = setTimeout(function () {
+      wordState.timer = null;
+      if (document.getElementById('mode-quiz').classList.contains('hidden')) return;
+      newQuiz();
+    }, 1000);
+    return;
+  }
+
+  wordState.attempts++;
+  btn.classList.add('wrong');
+  btn.disabled = true;
+  if (wordState.attempts === 1) {
+    if (fb) { fb.className = 'q-feedback'; fb.textContent = '다시 한 번 골라 보세요.'; }
+    return;
+  }
+  wordState.answered = true;
+  for (var j = 0; j < opts.length; j++) {
+    opts[j].disabled = true;
+    if ((opts[j].getAttribute('onclick') || '').indexOf('true') !== -1) opts[j].classList.add('correct');
+  }
+  wordState.total++;
+  saveWrongWord();
+  if (fb) {
+    fb.className = 'q-feedback no';
+    fb.textContent = '아쉬워요. 정답: ' + wordState.cur.m + ' · ★ 복습함에 담고, 이 단어는 조금 뒤 다시 냅니다.';
+  }
+  updateQuizScore();
+  wordState.timer = setTimeout(function () {
+    wordState.timer = null;
+    if (document.getElementById('mode-quiz').classList.contains('hidden')) return;
+    newQuiz();
+  }, 2000);
 }
 
 /* ---------- 언어 비교 ---------- */
@@ -1403,17 +1771,63 @@ function speakCompare(n) {
 }
 
 /* ---------- ★ 복습함 ---------- */
+function wordStarCount() {
+  var n = 0;
+  for (var k in WSTARS) if (WSTARS.hasOwnProperty(k)) n += WSTARS[k].length;
+  return n;
+}
+function wordStarKeys() {
+  var keys = [];
+  for (var k in WSTARS) if (WSTARS.hasOwnProperty(k) && WSTARS[k].length) keys.push(k);
+  return keys.sort();
+}
+function wordStarsHtml(wkeys) {
+  if (!wkeys || !wkeys.length) return '';
+  var h = '<div class="star-sec-title">🔖 저장한 단어 · ' + wordStarCount() + '개</div>';
+  wkeys.forEach(function (key) {
+    var parts = key.split('|');
+    var sid = parts[0], code = parts[1];
+    var list = WSTARS[key] || [];
+    h += '<div class="star-item"><div class="meta">' + esc(sid) + ' · ' + esc(LANGNAMES[code] || code) + ' · ' + list.length + '단어</div>';
+    list.forEach(function (ent, i) {
+      h += '<div style="border-top:1px dashed var(--border); padding:8px 0;">' +
+        '<div class="wr"><span class="w">' + esc(ent.w) + '</span><span class="p">' + formatTags(ent.p || '') + '</span></div>' +
+        '<div class="k">' + esc(ent.m || '') + '</div>' +
+        '<div class="acts">' +
+          '<button onclick="speakWordStar(\'' + esc(key) + '\',' + i + ')">🔊 듣기</button>' +
+          '<button onclick="removeWordStar(\'' + esc(key) + '\',' + i + ')">★ 해제</button>' +
+        '</div></div>';
+    });
+    h += '</div>';
+  });
+  return h;
+}
+function speakWordStar(key, i) {
+  var ent = (WSTARS[key] || [])[i];
+  if (!ent) return;
+  var code = key.split('|')[1] || 'en';
+  speakText(ent.w, { code: code, tts: ent.tts || code, name: ent.name || code }, speed, null);
+}
+function removeWordStar(key, i) {
+  var list = (WSTARS[key] || []).slice();
+  if (!list[i]) return;
+  list.splice(i, 1);
+  if (list.length) WSTARS[key] = list; else delete WSTARS[key];
+  lsSet('lq12_wstars', WSTARS);
+  updateStarCount();
+  renderStars();
+}
+
 function renderStars() {
   var body = document.getElementById('stars-body');
   var keys = [];
   for (var k in STARS) if (STARS.hasOwnProperty(k) && STARS[k].length) keys.push(k);
-  if (!keys.length) {
-    body.innerHTML = '<div class="card"><div class="empty">아직 ★ 표시한 문장이 없습니다.<br>카드 학습에서 ☆ 별표를 눌러 모아 두세요.</div></div>';
+  var wkeys = wordStarKeys();
+  if (!keys.length && !wkeys.length) {
+    body.innerHTML = '<div class="card"><div class="empty">아직 ★ 표시한 문장·단어가 없습니다.<br>카드 학습에서 ☆ 별표를, 단어 테스트에서 ☆ 복습함에 담기를 눌러 모아 두세요.</div></div>';
     return;
   }
   var html = '';
-  var pending = keys.length;
-  // 현재 STORY 데이터로 바로 보여 줄 수 있는 것 먼저, 나머지는 manifest 정보만
   keys.forEach(function (key) {
     var parts = key.split('|');
     var sid = parts[0], code = parts[1];
@@ -1422,6 +1836,7 @@ function renderStars() {
     var head = '<div class="star-item" data-key="' + esc(key) + '"><div class="meta">' + esc(sid) + ' · ' + esc(meta.title) + ' · ' + esc(LANGNAMES[code] || code) + ' · ' + idxs.length + '문장</div>';
     html += head + '<div class="star-lines" id="star-lines-' + esc(key).replace(/[^A-Za-z0-9]/g, '_') + '"><div class="empty" style="padding:8px;">불러오는 중…</div></div></div>';
   });
+  html += wordStarsHtml(wkeys);
   body.innerHTML = html;
   keys.forEach(function (key) {
     var parts = key.split('|');
@@ -1500,6 +1915,10 @@ function exportStars() {
     var p = key.split('|');
     lines.push('# ' + p[0] + ' / ' + p[1] + ' : ' + STARS[key].sort(function (a, b) { return a - b; }).map(function (i) { return i + 1; }).join(', '));
   }
+  wordStarKeys().forEach(function (wk) {
+    var p2 = wk.split('|');
+    lines.push('# ' + p2[0] + ' / ' + p2[1] + ' 단어 : ' + WSTARS[wk].map(function (e) { return e.w + ' (' + (e.m || '') + ')'; }).join(', '));
+  });
   var text = lines.join('\n') || '(비어 있음)';
   try {
     navigator.clipboard.writeText(text);
@@ -1507,9 +1926,11 @@ function exportStars() {
   } catch (e) { alert(text); }
 }
 function clearStars() {
-  if (!confirm('★ 표시를 모두 지울까요?')) return;
+  if (!confirm('★ 표시(문장·단어)를 모두 지울까요?')) return;
   STARS = {};
+  WSTARS = {};
   lsSet('lq12_stars', STARS);
+  lsSet('lq12_wstars', WSTARS);
   updateStarCount();
   renderStars();
   if (STORY) renderCard();
