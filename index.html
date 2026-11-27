@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>LingQ 미니 스토리 연습장 v14 — 1a~22b · 65편 · 30개 언어</title>
+<title>LingQ 미니 스토리 연습장 v15 — 1a~22b · 65편 · 30개 언어</title>
 <style>
   :root {
     --bg: #f8fafc;
@@ -1651,17 +1651,23 @@ function toggleWordStar() {
   var list = (WSTARS[key] || []).slice();
   var at = -1;
   for (var i = 0; i < list.length; i++) if (list[i].w === cur.w) { at = i; break; }
-  var on;
-  if (at === -1) { addWordStar(cur, lang); on = true; }
+  if (at === -1) addWordStar(cur, lang);
   else {
     list.splice(at, 1);
     if (list.length) WSTARS[key] = list; else delete WSTARS[key];
     lsSet('lq12_wstars', WSTARS);
     updateStarCount();
-    on = false;
   }
+  syncWordStarBtn();
+}
+
+/* 현재 단어의 ☆/★ 상태를 단추에 반영 */
+function syncWordStarBtn() {
   var b = document.querySelector('#quiz-body .quiz-audio .star-btn');
-  if (b) { b.className = 'star-btn' + (on ? ' on' : ''); b.textContent = on ? '★ 저장됨' : '☆ 복습함에 담기'; }
+  if (!b) return;
+  var on = wordIsStarred(wordState.cur);
+  b.className = 'star-btn' + (on ? ' on' : '');
+  b.textContent = on ? '★ 저장됨' : '☆ 복습함에 담기';
 }
 
 /* 오답 — 이번 세션 대기열 끝에 다시 넣고 ★ 복습함에도 담는다 */
@@ -1711,6 +1717,7 @@ function checkWordQuiz(btn, isCorrect) {
   }
   wordState.total++;
   saveWrongWord();
+  syncWordStarBtn();
   if (fb) {
     fb.className = 'q-feedback no';
     fb.textContent = '아쉬워요. 정답: ' + wordState.cur.m + ' · ★ 복습함에 담고, 이 단어는 조금 뒤 다시 냅니다.';
